@@ -12,7 +12,7 @@ export default async function Home() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const viewer = user ? await resolveViewer(user.id) : null;
+  const viewer = user ? await resolveViewer(user) : null;
   const data = await getTree({ viewer });
 
   return (

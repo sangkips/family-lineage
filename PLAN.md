@@ -235,6 +235,7 @@ All write endpoints validate:
 
 ### Phase 2 — Auth + self-insert with approvals ✅
 - [x] Registration / login pages (`/signup`, `/login`) + sign-out + auth-aware header
+- [x] Admin bootstrap: **admin at signup** — every account gets a Profile on first check (`src/lib/profile.ts` → `getOrCreateProfile`); emails in `ADMIN_EMAILS` are ADMIN immediately (and re-promoted on every check — self-healing), the first account in an empty tree is ADMIN, everyone else MEMBER. Role is decoupled from claiming (`Profile.personId` is nullable, bound on claim). Admin link in header for admins
 - [x] "Claim me" flow (`/claim` — search parents → submit self → PENDING) + `POST /api/claim`
 - [x] "Add child" flow (`/add`, drawer button → `POST /api/people`) — members add *other* people through the same queue
 - [x] Admin moderation queue + approve/reject (`/admin`, `/api/admin/pending`)
@@ -265,8 +266,10 @@ All write endpoints validate:
 2. **Multiple partners** — a person remarrying means children with two different
    partners. The join-table model handles this automatically; the renderer shows
    both partner cards. Confirm you want this in the first version.
-3. **Who is the admin?** Recommended: the person who creates the tree is admin
-   and can promote other members.
+3. **Who is the admin?** ✅ Decided — implemented in Phase 2/4: admin at signup via
+   `ADMIN_EMAILS` (env var, self-healing on every check) + first-account bootstrap;
+   role is decoupled from claiming a node. Adding an admin = add their email to
+   `ADMIN_EMAILS` (or let them be first).
 4. **Photos of living people** — default to private (visible to members only) in
    Phase 3.
 

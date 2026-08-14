@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PersonStatus, UserRole } from "@/generated/prisma/client";
 import { getUserFromRequest } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getOrCreateProfile } from "@/lib/profile";
 import { createRouteHandlerSupabaseClient } from "@/lib/supabase/route-handler";
 
 /**
@@ -20,8 +21,8 @@ export async function POST(
     return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   }
 
-  const profile = await prisma.profile.findUnique({ where: { userId: user.id } });
-  if (!profile || profile.role !== UserRole.ADMIN) {
+  const profile = await getOrCreateProfile(user);
+  if (profile.role !== UserRole.ADMIN) {
     return NextResponse.json({ error: "Admins only" }, { status: 403 });
   }
 

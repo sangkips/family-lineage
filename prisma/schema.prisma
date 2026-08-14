@@ -86,14 +86,17 @@ model PersonParent {
 }
 
 /// Links a Supabase Auth account to the Person node that represents them.
+/// The Profile exists from the moment an account is seen (role is set then),
+/// and personId is filled in when the member claims their node — so role is
+/// not coupled to claiming. personId stays null until then.
 model Profile {
   id        String   @id @default(cuid())
   userId    String   @unique
-  personId  String   @unique
+  personId  String?  @unique
   role      UserRole @default(MEMBER)
   createdAt DateTime @default(now())
 
-  person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+  person Person? @relation(fields: [personId], references: [id], onDelete: Cascade)
 
   @@index([role])
 }

@@ -80,11 +80,12 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // --- One claim per account ---
+    // --- One claim per account (the Profile exists from signup; a claim is
+    // the moment it gets bound to a person node) ---
     const existingProfile = await prisma.profile.findUnique({
       where: { userId: user.id },
     });
-    if (existingProfile) {
+    if (existingProfile?.personId) {
       return NextResponse.json(
         { error: "You have already claimed a place in the tree." },
         { status: 409 }
@@ -155,21 +156,36 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // First account in the tree becomes admin; ADMIN_EMAILS also grants it.
-      const profileCount = await tx.profile.count();
+      // Bind this claim to the account's Profile. Role was decided at signup
+      // (ADMIN_EMAILS / first-account bootstrap) — never downgrade an admin;
+      // ADMIN_EMAILS also re-promotes here in case the env var changed since.
       const email = user.email?.toLowerCase() ?? "";
       const adminEmails = (process.env.ADMIN_EMAILS ?? "")
         .split(",")
         .map((e) => e.trim().toLowerCase())
         .filter(Boolean);
-      const role =
-        profileCount === 0 || adminEmails.includes(email)
-          ? UserRole.ADMIN
-          : UserRole.MEMBER;
+      const wantsAdmin = adminEmails.includes(email);
 
-      await tx.profile.create({
-        data: { userId: user.id, personId: person.id, role },
-      });
+      if (existingProfile) {
+        await tx.profile.update({
+          where: { userId: user.id },
+          data: {
+            personId: person.id,
+            role:
+              existingProfile.role === UserRole.ADMIN || wantsAdmin
+                ? UserRole.ADMIN
+                : existingProfile.role,
+          },
+        });
+      } else {
+        // Fallback for a claim arriving before any page rendered the profile.
+        const profileCount = await tx.profile.count();
+        const role =
+          wantsAdmin || profileCount === 0 ? UserRole.ADMIN : UserRole.MEMBER;
+        await tx.profile.create({
+          data: { userId: user.id, personId: person.id, role },
+        });
+      }
 
       return person.id;
     });

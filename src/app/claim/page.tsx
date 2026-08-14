@@ -28,7 +28,7 @@ export default async function ClaimPage() {
           ← Back to tree
         </Link>
 
-        {profile ? (
+        {profile?.person ? (
           <div className="mt-6 rounded-2xl border border-gray-800 bg-[#161b22] p-8">
             <h1 className="text-xl font-bold">You&apos;re in the tree 🎉</h1>
             <p className="mt-2 text-sm text-gray-400">

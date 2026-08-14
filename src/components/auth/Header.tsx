@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { UserRole } from "@/generated/prisma/client";
-import { prisma } from "@/lib/prisma";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getOrCreateProfile } from "@/lib/profile";
 import SignOutButton from "./SignOutButton";
 
 type HeaderProps = {
@@ -15,15 +15,11 @@ export default async function Header({ peopleCount, linkCount }: HeaderProps) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Has this member claimed a node yet? Controls Claim me vs Edit profile.
-  const profile = user
-    ? await prisma.profile.findUnique({
-        where: { userId: user.id },
-        select: { personId: true, role: true },
-      })
-    : null;
-
+  // Ensures every account has a Profile (ADMIN from ADMIN_EMAILS at signup).
+  const profile = user ? await getOrCreateProfile(user) : null;
   const isAdmin = profile?.role === UserRole.ADMIN;
+  // Has this member claimed a node yet? Controls Claim me vs Edit profile.
+  const hasClaimed = Boolean(profile?.personId);
 
   return (
     <header className="flex items-center justify-between border-b border-gray-800 px-6 py-3">
@@ -57,7 +53,7 @@ export default async function Header({ peopleCount, linkCount }: HeaderProps) {
             >
               Add child
             </Link>
-            {profile ? (
+            {hasClaimed ? (
               <Link
                 href="/profile"
                 className="rounded-lg border border-gray-700 bg-[#161b22] px-3 py-1.5 text-xs text-gray-300 transition-colors hover:border-gray-600 hover:text-gray-100"

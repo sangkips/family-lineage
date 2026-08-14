@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PersonStatus, Prisma, UserRole } from "@/generated/prisma/client";
 import { getUserFromRequest } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getOrCreateProfile } from "@/lib/profile";
 import { createRouteHandlerSupabaseClient } from "@/lib/supabase/route-handler";
 
 /**
@@ -23,12 +24,7 @@ export async function GET(request: NextRequest) {
     const response = NextResponse.json({});
     const supabase = createRouteHandlerSupabaseClient(request, response);
     const user = await getUserFromRequest(request, supabase);
-    const profile = user
-      ? await prisma.profile.findUnique({
-          where: { userId: user.id },
-          select: { role: true, personId: true },
-        })
-      : null;
+    const profile = user ? await getOrCreateProfile(user) : null;
     const isAdmin = profile?.role === UserRole.ADMIN;
     const selfPersonId = profile?.personId ?? null;
 

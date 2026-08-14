@@ -1,5 +1,6 @@
 import { Prisma, UserRole } from "@/generated/prisma/client";
 import { prisma } from "./prisma";
+import { getOrCreateProfile, type AuthUser } from "./profile";
 
 // ---- Public DTOs (safe to send to the browser) ----
 
@@ -74,15 +75,14 @@ export type TreeViewer = {
 } | null;
 
 /** Resolve what a signed-in user is allowed to see in the tree. */
-export async function resolveViewer(userId: string): Promise<TreeViewer> {
-  const profile = await prisma.profile.findUnique({
-    where: { userId },
-    select: { role: true, personId: true },
-  });
+export async function resolveViewer(user: AuthUser): Promise<TreeViewer> {
+  // getOrCreateProfile lazily creates the Profile (with ADMIN role granted
+  // from ADMIN_EMAILS) so admins exist from the moment they sign in.
+  const profile = await getOrCreateProfile(user);
   return {
-    userId,
-    isAdmin: profile?.role === UserRole.ADMIN,
-    personId: profile?.personId ?? null,
+    userId: user.id,
+    isAdmin: profile.role === UserRole.ADMIN,
+    personId: profile.personId ?? null,
   };
 }
 

@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     const response = NextResponse.json({});
     const supabase = createRouteHandlerSupabaseClient(request, response);
     const user = await getUserFromRequest(request, supabase);
-    const viewer = user ? await resolveViewer(user.id) : null;
+    const viewer = user ? await resolveViewer(user) : null;
 
     const data = await getTree({ rootId, depth, viewer });
     return NextResponse.json(data);

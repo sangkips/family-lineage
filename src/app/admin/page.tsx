@@ -3,6 +3,7 @@ import Link from "next/link";
 import AdminActions from "@/components/admin/AdminActions";
 import { UserRole } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { getOrCreateProfile } from "@/lib/profile";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -14,8 +15,8 @@ export default async function AdminPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const profile = await prisma.profile.findUnique({ where: { userId: user.id } });
-  if (!profile || profile.role !== UserRole.ADMIN) {
+  const profile = await getOrCreateProfile(user);
+  if (profile.role !== UserRole.ADMIN) {
     redirect("/");
   }
 

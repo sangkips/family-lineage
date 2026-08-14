@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { UserRole } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import SignOutButton from "./SignOutButton";
@@ -18,9 +19,11 @@ export default async function Header({ peopleCount, linkCount }: HeaderProps) {
   const profile = user
     ? await prisma.profile.findUnique({
         where: { userId: user.id },
-        select: { personId: true },
+        select: { personId: true, role: true },
       })
     : null;
+
+  const isAdmin = profile?.role === UserRole.ADMIN;
 
   return (
     <header className="flex items-center justify-between border-b border-gray-800 px-6 py-3">
@@ -67,6 +70,14 @@ export default async function Header({ peopleCount, linkCount }: HeaderProps) {
                 className="rounded-lg bg-[#58a6ff] px-3 py-1.5 text-xs font-semibold text-[#0d1117] transition-opacity hover:opacity-90"
               >
                 Claim me
+              </Link>
+            )}
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-300 transition-colors hover:border-amber-500/70 hover:bg-amber-500/20"
+              >
+                Admin
               </Link>
             )}
             <span className="max-w-[160px] truncate text-xs text-gray-400">

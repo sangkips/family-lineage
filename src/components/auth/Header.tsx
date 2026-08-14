@@ -36,6 +36,12 @@ export default async function Header({ peopleCount, linkCount }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-3">
+        <a
+          href="/api/export/gedcom"
+          className="rounded-lg border border-gray-700 bg-[#161b22] px-3 py-1.5 text-xs text-gray-300 transition-colors hover:border-gray-600 hover:text-gray-100"
+        >
+          Export GEDCOM
+        </a>
         <span className="hidden rounded-full border border-gray-700 bg-[#161b22] px-3 py-1 text-xs text-gray-400 md:inline">
           Scroll to zoom · Drag to pan · Click a person for details
         </span>

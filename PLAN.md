@@ -252,7 +252,7 @@ All write endpoints validate:
 ### Phase 4 — Hardening & extras
 - [x] Cycle & duplicate validation hardening (`src/lib/validation.ts` — `findPotentialDuplicates` warns in `/api/claim` + `/api/people` responses; `assertNoCycle` recursive-CTE cycle guard inside the create transactions)
 - [x] Privacy toggles for living members (`hideBirthDate`/`hideFullName` on Person; redacted in `/api/tree` + `/api/search` for non-admin visitors; toggle in `/profile`)
-- [ ] GEDCOM export
+- [x] GEDCOM export (`GET /api/export/gedcom` + `src/lib/gedcom.ts` — 5.5.1 INDI/FAM records, privacy-redacted; "Export GEDCOM" link in header)
 - [ ] Deploy to Vercel + custom domain
 
 ---

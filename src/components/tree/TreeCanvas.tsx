@@ -7,6 +7,8 @@ import {
   Controls,
   MiniMap,
   ReactFlow,
+  ReactFlowProvider,
+  useReactFlow,
   type Edge,
   type NodeTypes,
 } from "@xyflow/react";
@@ -15,6 +17,7 @@ import { GENERATION_LABELS, layoutTree } from "@/lib/layout";
 import type { TreeData } from "@/lib/tree";
 import PersonNode, { type PersonFlowNode } from "./PersonNode";
 import PersonDrawer from "./PersonDrawer";
+import PersonSearch from "./PersonSearch";
 
 const nodeTypes: NodeTypes = { person: PersonNode };
 
@@ -29,9 +32,28 @@ export const GENERATION_COLORS = [
   "#ec4899", // gen 7 — pink
 ];
 
-export default function TreeCanvas({ data }: { data: TreeData }) {
+export default function TreeCanvas(props: {
+  data: TreeData;
+  /** The viewer's own claimed node, if any — enables "Edit your profile". */
+  viewerPersonId?: string | null;
+}) {
+  return (
+    <ReactFlowProvider>
+      <TreeCanvasInner {...props} />
+    </ReactFlowProvider>
+  );
+}
+
+function TreeCanvasInner({
+  data,
+  viewerPersonId = null,
+}: {
+  data: TreeData;
+  viewerPersonId?: string | null;
+}) {
   const layout = useMemo(() => layoutTree(data.people, data.links), [data]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const { fitView } = useReactFlow();
 
   const peopleById = useMemo(
     () => new Map(data.people.map((p) => [p.id, p])),
@@ -83,6 +105,14 @@ export default function TreeCanvas({ data }: { data: TreeData }) {
 
   return (
     <div className="relative h-full w-full">
+      <PersonSearch
+        onSelect={(personId) => {
+          setSelectedId(personId);
+          // Zoom the chosen person into view (fitView targets a single node).
+          fitView({ nodes: [{ id: personId }], padding: 0.4, duration: 500 });
+        }}
+      />
+
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -145,6 +175,7 @@ export default function TreeCanvas({ data }: { data: TreeData }) {
           person={selected}
           parents={selectedParents}
           children={selectedChildren}
+          ownPersonId={viewerPersonId}
           onClose={() => setSelectedId(null)}
         />
       )}

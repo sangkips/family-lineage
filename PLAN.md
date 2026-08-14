@@ -233,17 +233,19 @@ All write endpoints validate:
 - [x] Profile drawer on card click (`src/components/tree/PersonDrawer.tsx`)
 - [x] Milestone: the roadmap.sh-style tree renders from seed data (verified: 18 nodes, 21 edges, gens 0–6, no overlaps)
 
-### Phase 2 — Auth + self-insert with approvals (in progress)
+### Phase 2 — Auth + self-insert with approvals ✅
 - [x] Registration / login pages (`/signup`, `/login`) + sign-out + auth-aware header
 - [x] "Claim me" flow (`/claim` — search parents → submit self → PENDING) + `POST /api/claim`
-- [ ] "Add child" flow (PENDING ghost nodes, dashed in tree) — members add *other* people
+- [x] "Add child" flow (`/add`, drawer button → `POST /api/people`) — members add *other* people through the same queue
 - [x] Admin moderation queue + approve/reject (`/admin`, `/api/admin/pending`)
-- [x] Milestone: a new member can add themselves and appear after approval (12/12 e2e tests pass)
-- [ ] "Add child" for members; claim-existing-person option; ADMIN_EMAILS wired into UI
+- [x] Milestone: a new member can add themselves and appear after approval (12/12 + 12/12 e2e tests pass)
+- [x] PENDING ghost nodes: dashed + "pending approval" badge; visible to the submitter and admins only
+- [ ] Future: claim-existing-person option
 
 ### Phase 3 — Member experience
-- [ ] Edit own profile (photo upload via Supabase Storage, bio, dates)
-- [ ] Search
+- [x] Edit own profile — bio, birth/death dates & places, gender, maiden name, isLiving (`/profile`, `PATCH /api/people/:id`, direct apply to own node; names stay read-only)
+- [ ] Photo upload (Supabase Storage) — deferred
+- [x] Search — name search overlay on the tree, jump-to-person with fitView (`/api/search` + `PersonSearch`)
 - [ ] Expand/collapse branch controls, generation color-coding (like roadmap.sh groups)
 - [ ] Email notification to admin on new pending edit (Resend)
 

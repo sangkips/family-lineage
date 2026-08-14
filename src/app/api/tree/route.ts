@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTree } from "@/lib/tree";
+import { getUserFromRequest } from "@/lib/auth";
+import { getTree, resolveViewer } from "@/lib/tree";
+import { createRouteHandlerSupabaseClient } from "@/lib/supabase/route-handler";
 
 /**
  * GET /api/tree — public, read-only.
@@ -17,7 +19,13 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const data = await getTree({ rootId, depth });
+    // Signed-in users see their own PENDING ghost nodes (admins see all).
+    const response = NextResponse.json({});
+    const supabase = createRouteHandlerSupabaseClient(request, response);
+    const user = await getUserFromRequest(request, supabase);
+    const viewer = user ? await resolveViewer(user.id) : null;
+
+    const data = await getTree({ rootId, depth, viewer });
     return NextResponse.json(data);
   } catch (error) {
     console.error("GET /api/tree failed:", error);

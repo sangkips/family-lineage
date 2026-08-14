@@ -11,19 +11,51 @@ type SearchResult = {
   isLiving: boolean;
 };
 
+type ParentRole = "FATHER" | "MOTHER" | "PARENT";
+
 type SelectedParent = {
   parentId: string;
   name: string;
-  role: "FATHER" | "MOTHER";
+  role: ParentRole;
+};
+
+type Props = {
+  mode: "claim" | "add";
+  /** A parent preselected from the URL (e.g. the "Add child" button in a drawer). */
+  initialParent?: { id: string; name: string } | null;
 };
 
 const MAX_PARENTS = 2;
 
-export default function ClaimWizard() {
+const COPY = {
+  claim: {
+    title: "Claim your place in the tree",
+    subtitle:
+      "Find your parents below, then tell us about yourself. An admin will approve your entry before it becomes public.",
+    successTitle: "Claim submitted 🎉",
+    successBody: (name: string) =>
+      `You're in the tree as ${name} — pending approval by a tree admin. You'll appear once an admin approves your entry.`,
+  },
+  add: {
+    title: "Add a child to the tree",
+    subtitle:
+      "Find the parents below, then enter the child's details. An admin will approve the entry before it becomes public.",
+    successTitle: "Entry submitted 🎉",
+    successBody: (name: string) =>
+      `${name} was added as a pending entry. An admin will review it, and the person will appear in the tree once approved.`,
+  },
+} as const;
+
+export default function ChildWizard({ mode, initialParent }: Props) {
+  const copy = COPY[mode];
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
-  const [selectedParents, setSelectedParents] = useState<SelectedParent[]>([]);
+  const [selectedParents, setSelectedParents] = useState<SelectedParent[]>(() =>
+    initialParent
+      ? [{ parentId: initialParent.id, name: initialParent.name, role: "PARENT" }]
+      : []
+  );
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -59,16 +91,12 @@ export default function ClaimWizard() {
     };
   }, [query]);
 
-  function addParent(result: SearchResult, role: "FATHER" | "MOTHER") {
+  function addParent(result: SearchResult, role: ParentRole) {
     if (selectedParents.length >= MAX_PARENTS) return;
     if (selectedParents.some((p) => p.parentId === result.id)) return;
     setSelectedParents([
       ...selectedParents,
-      {
-        parentId: result.id,
-        name: `${result.firstName} ${result.lastName}`,
-        role,
-      },
+      { parentId: result.id, name: `${result.firstName} ${result.lastName}`, role },
     ]);
     setQuery("");
     setResults([]);
@@ -83,7 +111,7 @@ export default function ClaimWizard() {
     setError(null);
     setSubmitting(true);
     try {
-      const res = await fetch("/api/claim", {
+      const res = await fetch(mode === "claim" ? "/api/claim" : "/api/people", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -113,17 +141,11 @@ export default function ClaimWizard() {
   }
 
   if (done) {
+    const name = `${firstName} ${lastName}`.trim();
     return (
       <div className="mt-6 rounded-2xl border border-green-500/40 bg-green-500/10 p-8">
-        <h1 className="text-xl font-bold text-green-300">Claim submitted 🎉</h1>
-        <p className="mt-2 text-sm text-gray-300">
-          You&apos;re in the tree as{" "}
-          <span className="font-semibold">
-            {firstName} {lastName}
-          </span>{" "}
-          — pending approval by a tree admin. You&apos;ll appear once an admin
-          approves your entry.
-        </p>
+        <h1 className="text-xl font-bold text-green-300">{copy.successTitle}</h1>
+        <p className="mt-2 text-sm text-gray-300">{copy.successBody(name)}</p>
       </div>
     );
   }
@@ -131,17 +153,14 @@ export default function ClaimWizard() {
   return (
     <div className="mt-6 space-y-6">
       <div>
-        <h1 className="text-xl font-bold">Claim your place in the tree</h1>
-        <p className="mt-1 text-sm text-gray-400">
-          Find your parents below, then tell us about yourself. An admin will
-          approve your entry before it becomes public.
-        </p>
+        <h1 className="text-xl font-bold">{copy.title}</h1>
+        <p className="mt-1 text-sm text-gray-400">{copy.subtitle}</p>
       </div>
 
       {/* Step 1: parents */}
       <section className="rounded-2xl border border-gray-800 bg-[#161b22] p-6">
         <h2 className="text-sm font-semibold text-gray-300">
-          1 · Who are your parents?
+          1 · Who are the parents?
         </h2>
 
         <div className="relative mt-4">
@@ -191,6 +210,14 @@ export default function ClaimWizard() {
                   >
                     Mother
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => addParent(r, "PARENT")}
+                    disabled={selectedParents.length >= MAX_PARENTS}
+                    className="rounded-md border border-gray-600 bg-gray-500/10 px-2.5 py-1 text-xs text-gray-300 transition-colors hover:bg-gray-500/20 disabled:opacity-40"
+                  >
+                    Parent
+                  </button>
                 </div>
               </li>
             ))}
@@ -232,7 +259,7 @@ export default function ClaimWizard() {
       <form onSubmit={handleSubmit} className="space-y-6">
         <section className="rounded-2xl border border-gray-800 bg-[#161b22] p-6">
           <h2 className="text-sm font-semibold text-gray-300">
-            2 · Tell us about yourself
+            2 · {mode === "claim" ? "Tell us about yourself" : "The child's details"}
           </h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div>

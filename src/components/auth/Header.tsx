@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { prisma } from "@/lib/prisma";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import SignOutButton from "./SignOutButton";
 
@@ -12,6 +13,14 @@ export default async function Header({ peopleCount, linkCount }: HeaderProps) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  // Has this member claimed a node yet? Controls Claim me vs Edit profile.
+  const profile = user
+    ? await prisma.profile.findUnique({
+        where: { userId: user.id },
+        select: { personId: true },
+      })
+    : null;
 
   return (
     <header className="flex items-center justify-between border-b border-gray-800 px-6 py-3">
@@ -34,11 +43,26 @@ export default async function Header({ peopleCount, linkCount }: HeaderProps) {
         {user ? (
           <>
             <Link
-              href="/claim"
-              className="rounded-lg bg-[#58a6ff] px-3 py-1.5 text-xs font-semibold text-[#0d1117] transition-opacity hover:opacity-90"
+              href="/add"
+              className="rounded-lg border border-gray-700 bg-[#161b22] px-3 py-1.5 text-xs text-gray-300 transition-colors hover:border-gray-600 hover:text-gray-100"
             >
-              Claim me
+              Add child
             </Link>
+            {profile ? (
+              <Link
+                href="/profile"
+                className="rounded-lg border border-gray-700 bg-[#161b22] px-3 py-1.5 text-xs text-gray-300 transition-colors hover:border-gray-600 hover:text-gray-100"
+              >
+                Edit profile
+              </Link>
+            ) : (
+              <Link
+                href="/claim"
+                className="rounded-lg bg-[#58a6ff] px-3 py-1.5 text-xs font-semibold text-[#0d1117] transition-opacity hover:opacity-90"
+              >
+                Claim me
+              </Link>
+            )}
             <span className="max-w-[160px] truncate text-xs text-gray-400">
               {user.email}
             </span>

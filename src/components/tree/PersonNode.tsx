@@ -21,6 +21,7 @@ function formatYears(person: PersonDTO): string {
 
 function PersonNode({ data, selected }: NodeProps<PersonFlowNode>) {
   const { person, generationColor } = data;
+  const isPending = person.status === "PENDING";
   const initials = `${person.firstName[0] ?? ""}${person.lastName[0] ?? ""}`.toUpperCase();
 
   const avatarStyles =
@@ -33,9 +34,13 @@ function PersonNode({ data, selected }: NodeProps<PersonFlowNode>) {
   return (
     <div
       className={`w-[200px] rounded-xl border bg-[#161b22] shadow-lg transition-shadow ${
-        selected ? "border-[#58a6ff] ring-2 ring-[#58a6ff]/40" : "border-gray-700/80"
-      }`}
-      style={{ borderTop: `3px solid ${generationColor}` }}
+        selected
+          ? "border-[#58a6ff] ring-2 ring-[#58a6ff]/40"
+          : isPending
+            ? "border-dashed border-amber-500/60"
+            : "border-gray-700/80"
+      } ${isPending ? "opacity-80" : ""}`}
+      style={{ borderTop: `3px solid ${isPending ? "#f59e0b" : generationColor}` }}
     >
       <Handle type="target" position={Position.Top} className="!bg-gray-500 !w-2 !h-2" />
       <div className="flex items-center gap-2.5 px-3 py-2.5">
@@ -48,7 +53,16 @@ function PersonNode({ data, selected }: NodeProps<PersonFlowNode>) {
           <p className="truncate text-sm font-semibold text-gray-100">
             {person.firstName} {person.lastName}
           </p>
-          <p className="truncate text-xs text-gray-400">{formatYears(person)}</p>
+          <p className="truncate text-xs text-gray-400">
+            {isPending ? (
+              <span className="flex items-center gap-1 text-amber-400">
+                <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amber-400" />
+                Pending approval
+              </span>
+            ) : (
+              formatYears(person)
+            )}
+          </p>
         </div>
       </div>
       <Handle type="source" position={Position.Bottom} className="!bg-gray-500 !w-2 !h-2" />

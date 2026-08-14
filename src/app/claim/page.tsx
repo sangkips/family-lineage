@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import ClaimWizard from "@/components/claim/ClaimWizard";
+import ChildWizard from "@/components/claim/ChildWizard";
 import { prisma } from "@/lib/prisma";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -48,7 +48,7 @@ export default async function ClaimPage() {
             </p>
           </div>
         ) : (
-          <ClaimWizard />
+          <ChildWizard mode="claim" />
         )}
       </div>
     </main>

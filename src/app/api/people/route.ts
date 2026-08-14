@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Gender, ParentRole, PersonStatus } from "@/generated/prisma/client";
 import { getUserFromRequest } from "@/lib/auth";
+import { notifyAdminsOfPending } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
 import { createRouteHandlerSupabaseClient } from "@/lib/supabase/route-handler";
 
@@ -115,6 +116,15 @@ export async function POST(request: NextRequest) {
       });
 
       return person.id;
+    });
+
+    // Fire-and-forget: notify admins a new person is waiting (never
+    // blocks/fails the response — failures are logged inside the helper).
+    void notifyAdminsOfPending({
+      personName: `${firstName} ${lastName}`.trim(),
+      requestType: "ADD_PERSON",
+      submittedBy: user.email,
+      adminUrl: new URL("/admin", request.url).toString(),
     });
 
     return NextResponse.json(

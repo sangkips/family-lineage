@@ -247,7 +247,7 @@ All write endpoints validate:
 - [ ] Photo upload (Supabase Storage) — deferred
 - [x] Search — name search overlay on the tree, jump-to-person with fitView (`/api/search` + `PersonSearch`)
 - [x] Expand/collapse branch controls (per-node toggle with +N badge, "expand all" control, search auto-expands ancestors); generation color-coding was done in Phase 1
-- [ ] Email notification to admin on new pending edit (Resend)
+- [x] Email notification to admins on new pending entry (Resend — `src/lib/email.ts`, fired from `/api/claim` + `/api/people`; safe no-op without `RESEND_API_KEY`)
 
 ### Phase 4 — Hardening & extras
 - [ ] Cycle & duplicate validation hardening

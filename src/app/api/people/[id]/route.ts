@@ -13,6 +13,9 @@ type EditProfileBody = {
   deathPlace?: string;
   bio?: string;
   isLiving?: boolean;
+  /** Privacy toggles — only meaningful for living people. */
+  hideBirthDate?: boolean;
+  hideFullName?: boolean;
 };
 
 /**
@@ -80,6 +83,10 @@ export async function PATCH(
         deathPlace: body.deathPlace?.trim() || null,
         bio: body.bio?.trim() || null,
         isLiving: typeof body.isLiving === "boolean" ? body.isLiving : undefined,
+        hideBirthDate:
+          typeof body.hideBirthDate === "boolean" ? body.hideBirthDate : undefined,
+        hideFullName:
+          typeof body.hideFullName === "boolean" ? body.hideFullName : undefined,
       },
     });
 

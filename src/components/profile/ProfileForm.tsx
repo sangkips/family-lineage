@@ -16,6 +16,8 @@ type ProfilePerson = {
   deathPlace: string | null;
   bio: string | null;
   isLiving: boolean;
+  hideBirthDate: boolean;
+  hideFullName: boolean;
   status: string;
 };
 
@@ -30,6 +32,8 @@ export default function ProfileForm({ person }: { person: ProfilePerson }) {
   const [deathDate, setDeathDate] = useState(person.deathDate);
   const [deathPlace, setDeathPlace] = useState(person.deathPlace ?? "");
   const [isLiving, setIsLiving] = useState(person.isLiving);
+  const [hideBirthDate, setHideBirthDate] = useState(person.hideBirthDate);
+  const [hideFullName, setHideFullName] = useState(person.hideFullName);
   const [bio, setBio] = useState(person.bio ?? "");
 
   const [saving, setSaving] = useState(false);
@@ -54,6 +58,8 @@ export default function ProfileForm({ person }: { person: ProfilePerson }) {
           deathPlace: isLiving ? null : deathPlace.trim() || null,
           bio: bio.trim() || null,
           isLiving,
+          hideBirthDate,
+          hideFullName,
         }),
       });
       const body = await res.json();
@@ -174,6 +180,44 @@ export default function ProfileForm({ person }: { person: ProfilePerson }) {
             </label>
           </div>
         </section>
+
+        {isLiving && (
+          <section className="rounded-2xl border border-gray-800 bg-[#161b22] p-6">
+            <h2 className="text-sm font-semibold text-gray-300">Privacy</h2>
+            <p className="mt-1 text-xs text-gray-500">
+              Only applies to living people. Admins and you always see your
+              full details; other visitors see what you allow.
+            </p>
+            <div className="mt-4 space-y-3">
+              <label className="flex items-start gap-2 text-sm text-gray-300">
+                <input
+                  type="checkbox"
+                  checked={hideBirthDate}
+                  onChange={(e) => setHideBirthDate(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-gray-700 bg-[#0d1117] accent-[#58a6ff]"
+                />
+                <span>
+                  Hide my birth date{" "}
+                  <span className="text-gray-500">— visitors see “unknown”</span>
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-sm text-gray-300">
+                <input
+                  type="checkbox"
+                  checked={hideFullName}
+                  onChange={(e) => setHideFullName(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-gray-700 bg-[#0d1117] accent-[#58a6ff]"
+                />
+                <span>
+                  Hide my full name{" "}
+                  <span className="text-gray-500">
+                    — visitors see “Private” and can&apos;t find me by name
+                  </span>
+                </span>
+              </label>
+            </div>
+          </section>
+        )}
 
         <section className="rounded-2xl border border-gray-800 bg-[#161b22] p-6">
           <h2 className="text-sm font-semibold text-gray-300">Bio</h2>

@@ -47,6 +47,10 @@ model Person {
   photoUrl   String?
   bio        String?
   isLiving   Boolean      @default(true)
+  /// Privacy toggles for living members: hide birth date / full name from
+  /// non-admin visitors. Only meaningful when isLiving is true.
+  hideBirthDate Boolean     @default(false)
+  hideFullName  Boolean     @default(false)
   status     PersonStatus @default(PENDING)
   /// Supabase Auth user id of the submitter
   createdBy  String?

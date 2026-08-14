@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PersonStatus, Prisma } from "@/generated/prisma/client";
+import { PersonStatus, Prisma, UserRole } from "@/generated/prisma/client";
+import { getUserFromRequest } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { createRouteHandlerSupabaseClient } from "@/lib/supabase/route-handler";
 
 /**
- * GET /api/search?q= — public name search over approved people.
- * Used by the "claim me" parent picker.
+ * GET /api/search?q= — name search over approved people.
+ * Used by the "claim me" / "add child" parent picker.
+ *
+ * Privacy: living members who hide their full name are excluded from results
+ * for non-admins (their name is the search key, so returning a placeholder
+ * would be useless), and their birth year is withheld when they hide birth
+ * dates. Admins and the person themselves always see everything.
  */
 export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams.get("q")?.trim();
@@ -13,13 +20,40 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const response = NextResponse.json({});
+    const supabase = createRouteHandlerSupabaseClient(request, response);
+    const user = await getUserFromRequest(request, supabase);
+    const profile = user
+      ? await prisma.profile.findUnique({
+          where: { userId: user.id },
+          select: { role: true, personId: true },
+        })
+      : null;
+    const isAdmin = profile?.role === UserRole.ADMIN;
+    const selfPersonId = profile?.personId ?? null;
+
     const people = await prisma.person.findMany({
       where: {
         status: PersonStatus.APPROVED,
         deletedAt: null,
-        OR: [
-          { firstName: { contains: q, mode: "insensitive" } },
-          { lastName: { contains: q, mode: "insensitive" } },
+        // A living person who hides their full name is unsearchable by name
+        // for everyone except admins and themselves.
+        ...(isAdmin
+          ? {}
+          : {
+              OR: [
+                { hideFullName: false },
+                { isLiving: false },
+                { id: selfPersonId ?? "__none__" },
+              ],
+            }),
+        AND: [
+          {
+            OR: [
+              { firstName: { contains: q, mode: "insensitive" } },
+              { lastName: { contains: q, mode: "insensitive" } },
+            ],
+          },
         ],
       },
       select: {
@@ -29,20 +63,27 @@ export async function GET(request: NextRequest) {
         gender: true,
         birthDate: true,
         isLiving: true,
+        hideBirthDate: true,
+        hideFullName: true,
       },
       orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
       take: 10,
     });
 
     return NextResponse.json(
-      people.map((p) => ({
-        id: p.id,
-        firstName: p.firstName,
-        lastName: p.lastName,
-        gender: p.gender,
-        birthYear: p.birthDate ? p.birthDate.getFullYear() : null,
-        isLiving: p.isLiving,
-      }))
+      people.map((p) => {
+        // Non-admins don't get the birth year of living people who hid it.
+        const canSeeBirth =
+          isAdmin || selfPersonId === p.id || !p.isLiving || !p.hideBirthDate;
+        return {
+          id: p.id,
+          firstName: p.firstName,
+          lastName: p.lastName,
+          gender: p.gender,
+          birthYear: canSeeBirth && p.birthDate ? p.birthDate.getFullYear() : null,
+          isLiving: p.isLiving,
+        };
+      })
     );
   } catch (error) {
     console.error("GET /api/search failed:", error);

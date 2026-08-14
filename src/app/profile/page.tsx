@@ -60,6 +60,8 @@ export default async function ProfilePage() {
               deathPlace: profile.person.deathPlace,
               bio: profile.person.bio,
               isLiving: profile.person.isLiving,
+              hideBirthDate: profile.person.hideBirthDate,
+              hideFullName: profile.person.hideFullName,
               status: profile.person.status,
             }}
           />

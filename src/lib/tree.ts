@@ -47,6 +47,9 @@ type PersonRow = {
   birthPlace: string | null;
   bio: string | null;
   isLiving: boolean;
+  /** Living members can opt out of sharing these with non-admin visitors. */
+  hideBirthDate: boolean;
+  hideFullName: boolean;
   status: PersonStatusDTO;
 };
 
@@ -56,7 +59,7 @@ type LinkRow = {
   role: ParentRole;
 };
 
-const PERSON_COLUMNS = `"id", "firstName", "lastName", "maidenName", "gender", "birthDate", "deathDate", "birthPlace", "bio", "isLiving", "status"`;
+const PERSON_COLUMNS = `"id", "firstName", "lastName", "maidenName", "gender", "birthDate", "deathDate", "birthPlace", "bio", "isLiving", "hideBirthDate", "hideFullName", "status"`;
 
 /**
  * Who is looking at the tree. Controls whether PENDING people (ghost nodes)
@@ -145,19 +148,32 @@ export async function getTree(
     links = linkRows;
   }
 
-  const people: PersonDTO[] = peopleRows.map((p) => ({
-    id: p.id,
-    firstName: p.firstName,
-    lastName: p.lastName,
-    maidenName: p.maidenName,
-    gender: p.gender,
-    birthDate: p.birthDate ? p.birthDate.toISOString() : null,
-    deathDate: p.deathDate ? p.deathDate.toISOString() : null,
-    birthPlace: p.birthPlace,
-    bio: p.bio,
-    isLiving: p.isLiving,
-    status: p.status,
-  }));
+  // Privacy: living members who opt out of sharing birth details or their
+  // full name are redacted for everyone except admins and themselves.
+  const viewer = options.viewer;
+  const people: PersonDTO[] = peopleRows.map((p) => {
+    const isSelf = viewer?.personId === p.id;
+    const isAdmin = viewer?.isAdmin === true;
+    // Privacy toggles only apply while the person is living — deceased
+    // relatives' records are historical and always public.
+    const canSeeFull = !p.isLiving || isSelf || isAdmin;
+    const hideBirth = !canSeeFull && p.hideBirthDate;
+    const hideName = !canSeeFull && p.hideFullName;
+
+    return {
+      id: p.id,
+      firstName: hideName ? "Private" : p.firstName,
+      lastName: hideName ? "" : p.lastName,
+      maidenName: hideName ? null : p.maidenName,
+      gender: p.gender,
+      birthDate: hideBirth ? null : p.birthDate ? p.birthDate.toISOString() : null,
+      deathDate: p.deathDate ? p.deathDate.toISOString() : null,
+      birthPlace: hideBirth ? null : p.birthPlace,
+      bio: p.bio,
+      isLiving: p.isLiving,
+      status: p.status,
+    };
+  });
 
   return { people, links };
 }

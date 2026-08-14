@@ -19,6 +19,14 @@ type SelectedParent = {
   role: ParentRole;
 };
 
+type DuplicateInfo = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  birthDate: string | null;
+  status: string;
+};
+
 type Props = {
   mode: "claim" | "add";
   /** A parent preselected from the URL (e.g. the "Add child" button in a drawer). */
@@ -67,6 +75,7 @@ export default function ChildWizard({ mode, initialParent }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [duplicates, setDuplicates] = useState<DuplicateInfo[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
 
   // Debounced search
@@ -132,6 +141,7 @@ export default function ChildWizard({ mode, initialParent }: Props) {
         setError(body.error ?? "Something went wrong");
         return;
       }
+      setDuplicates(Array.isArray(body.duplicates) ? body.duplicates : []);
       setDone(true);
     } catch {
       setError("Network error — please try again");
@@ -143,9 +153,36 @@ export default function ChildWizard({ mode, initialParent }: Props) {
   if (done) {
     const name = `${firstName} ${lastName}`.trim();
     return (
-      <div className="mt-6 rounded-2xl border border-green-500/40 bg-green-500/10 p-8">
-        <h1 className="text-xl font-bold text-green-300">{copy.successTitle}</h1>
-        <p className="mt-2 text-sm text-gray-300">{copy.successBody(name)}</p>
+      <div className="mt-6 space-y-4">
+        <div className="rounded-2xl border border-green-500/40 bg-green-500/10 p-8">
+          <h1 className="text-xl font-bold text-green-300">{copy.successTitle}</h1>
+          <p className="mt-2 text-sm text-gray-300">{copy.successBody(name)}</p>
+        </div>
+        {duplicates.length > 0 && (
+          <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-6">
+            <h2 className="text-sm font-semibold text-amber-300">
+              ⚠️ Possible duplicate{duplicates.length > 1 ? "s" : ""} in the tree
+            </h2>
+            <p className="mt-1 text-sm text-gray-300">
+              {duplicates.length > 1 ? "These people" : "This person"} {duplicates.length > 1 ? "look" : "looks"}{" "}
+              like {name}. An admin will review your entry — if it&apos;s a
+              duplicate, it may be rejected.
+            </p>
+            <ul className="mt-3 space-y-1">
+              {duplicates.map((d) => (
+                <li key={d.id} className="text-sm text-gray-200">
+                  {d.firstName} {d.lastName}
+                  {d.birthDate
+                    ? ` (b. ${new Date(d.birthDate).getFullYear()})`
+                    : ""}
+                  <span className="ml-2 text-xs text-gray-500">
+                    {d.status.toLowerCase()}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     );
   }

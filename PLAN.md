@@ -250,7 +250,7 @@ All write endpoints validate:
 - [x] Email notification to admins on new pending entry (Resend — `src/lib/email.ts`, fired from `/api/claim` + `/api/people`; safe no-op without `RESEND_API_KEY`)
 
 ### Phase 4 — Hardening & extras
-- [ ] Cycle & duplicate validation hardening
+- [x] Cycle & duplicate validation hardening (`src/lib/validation.ts` — `findPotentialDuplicates` warns in `/api/claim` + `/api/people` responses; `assertNoCycle` recursive-CTE cycle guard inside the create transactions)
 - [ ] Privacy toggles for living members
 - [ ] GEDCOM export
 - [ ] Deploy to Vercel + custom domain

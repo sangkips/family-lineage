@@ -4,6 +4,11 @@ import { getUserFromRequest } from "@/lib/auth";
 import { notifyAdminsOfPending } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
 import { createRouteHandlerSupabaseClient } from "@/lib/supabase/route-handler";
+import {
+  assertNoCycle,
+  CycleValidationError,
+  findPotentialDuplicates,
+} from "@/lib/validation";
 
 type ParentLinkInput = { parentId: string; role: ParentRole };
 type AddChildBody = {
@@ -67,6 +72,13 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    // --- Warn about likely duplicates (admin still decides) ---
+    const duplicates = await findPotentialDuplicates({
+      firstName,
+      lastName,
+      birthDate,
+    });
+
     // Parents must exist and be approved.
     if (parentLinks.length > 0) {
       const parentIds = parentLinks.map((l) => l.parentId);
@@ -96,6 +108,14 @@ export async function POST(request: NextRequest) {
           createdBy: user.id,
         },
       });
+
+      // A brand-new person is a leaf, so this can't trip today — but it
+      // guards the same DAG invariant against future re-link endpoints.
+      await assertNoCycle(
+        tx,
+        person.id,
+        parentLinks.map((l) => l.parentId)
+      );
 
       if (parentLinks.length > 0) {
         await tx.personParent.createMany({
@@ -128,10 +148,24 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(
-      { personId, status: PersonStatus.PENDING },
+      {
+        personId,
+        status: PersonStatus.PENDING,
+        // Informational: people who look like duplicates already in the tree.
+        duplicates: duplicates.map((d) => ({
+          id: d.id,
+          firstName: d.firstName,
+          lastName: d.lastName,
+          birthDate: d.birthDate?.toISOString() ?? null,
+          status: d.status,
+        })),
+      },
       { status: 201 }
     );
   } catch (error) {
+    if (error instanceof CycleValidationError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
     console.error("POST /api/people failed:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

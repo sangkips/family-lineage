@@ -5,6 +5,13 @@ import type { PersonDTO } from "@/lib/tree";
 export type PersonNodeData = {
   person: PersonDTO;
   generationColor: string;
+  /** Whether this person has children (shows the collapse toggle). */
+  hasChildren?: boolean;
+  /** Whether this person's branch is currently collapsed. */
+  collapsed?: boolean;
+  /** How many descendants are hidden while collapsed (the "+N" badge). */
+  hiddenCount?: number;
+  onToggleCollapse?: (personId: string) => void;
 };
 
 export type PersonFlowNode = Node<PersonNodeData, "person">;
@@ -20,7 +27,14 @@ function formatYears(person: PersonDTO): string {
 }
 
 function PersonNode({ data, selected }: NodeProps<PersonFlowNode>) {
-  const { person, generationColor } = data;
+  const {
+    person,
+    generationColor,
+    hasChildren,
+    collapsed,
+    hiddenCount = 0,
+    onToggleCollapse,
+  } = data;
   const isPending = person.status === "PENDING";
   const initials = `${person.firstName[0] ?? ""}${person.lastName[0] ?? ""}`.toUpperCase();
 
@@ -33,7 +47,7 @@ function PersonNode({ data, selected }: NodeProps<PersonFlowNode>) {
 
   return (
     <div
-      className={`w-[200px] rounded-xl border bg-[#161b22] shadow-lg transition-shadow ${
+      className={`relative w-[200px] rounded-xl border bg-[#161b22] shadow-lg transition-shadow ${
         selected
           ? "border-[#58a6ff] ring-2 ring-[#58a6ff]/40"
           : isPending
@@ -42,6 +56,32 @@ function PersonNode({ data, selected }: NodeProps<PersonFlowNode>) {
       } ${isPending ? "opacity-80" : ""}`}
       style={{ borderTop: `3px solid ${isPending ? "#f59e0b" : generationColor}` }}
     >
+      {hasChildren && onToggleCollapse && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleCollapse(person.id);
+          }}
+          title={
+            collapsed
+              ? `Expand ${person.firstName}'s branch (${hiddenCount} hidden)`
+              : `Collapse ${person.firstName}'s branch`
+          }
+          aria-label={
+            collapsed
+              ? `Expand ${person.firstName}'s branch`
+              : `Collapse ${person.firstName}'s branch`
+          }
+          className={`absolute -right-2.5 -top-2.5 z-10 flex h-6 min-w-6 items-center justify-center rounded-full border px-1 text-xs font-semibold shadow-md transition-colors ${
+            collapsed
+              ? "border-[#58a6ff] bg-[#58a6ff] text-[#0d1117] hover:bg-[#79c0ff]"
+              : "border-gray-600 bg-[#0d1117] text-gray-300 hover:border-[#58a6ff] hover:text-[#58a6ff]"
+          }`}
+        >
+          {collapsed ? `+${hiddenCount}` : "−"}
+        </button>
+      )}
       <Handle type="target" position={Position.Top} className="!bg-gray-500 !w-2 !h-2" />
       <div className="flex items-center gap-2.5 px-3 py-2.5">
         <div

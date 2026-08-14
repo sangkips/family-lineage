@@ -246,7 +246,7 @@ All write endpoints validate:
 - [x] Edit own profile — bio, birth/death dates & places, gender, maiden name, isLiving (`/profile`, `PATCH /api/people/:id`, direct apply to own node; names stay read-only)
 - [ ] Photo upload (Supabase Storage) — deferred
 - [x] Search — name search overlay on the tree, jump-to-person with fitView (`/api/search` + `PersonSearch`)
-- [ ] Expand/collapse branch controls, generation color-coding (like roadmap.sh groups)
+- [x] Expand/collapse branch controls (per-node toggle with +N badge, "expand all" control, search auto-expands ancestors); generation color-coding was done in Phase 1
 - [ ] Email notification to admin on new pending edit (Resend)
 
 ### Phase 4 — Hardening & extras

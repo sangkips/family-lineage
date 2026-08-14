@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Background,
   BackgroundVariant,
+  ControlButton,
   Controls,
   MiniMap,
   ReactFlow,
@@ -51,9 +52,134 @@ function TreeCanvasInner({
   data: TreeData;
   viewerPersonId?: string | null;
 }) {
-  const layout = useMemo(() => layoutTree(data.people, data.links), [data]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const { fitView } = useReactFlow();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  /** Person ids whose descendants are hidden (the branch is collapsed). */
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
+  /** A person to zoom to after the next render (used by search). */
+  const [pendingFocusId, setPendingFocusId] = useState<string | null>(null);
+
+  // ---- Graph helpers over the full dataset ----
+  const childrenByParent = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const l of data.links) {
+      const list = map.get(l.parentId) ?? [];
+      list.push(l.childId);
+      map.set(l.parentId, list);
+    }
+    return map;
+  }, [data.links]);
+
+  const parentsByChild = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const l of data.links) {
+      const list = map.get(l.childId) ?? [];
+      list.push(l.parentId);
+      map.set(l.childId, list);
+    }
+    return map;
+  }, [data.links]);
+
+  /** All descendants of each person (for the "+N" badge). */
+  const descendantCount = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const p of data.people) {
+      let total = 0;
+      const stack = [...(childrenByParent.get(p.id) ?? [])];
+      const seen = new Set<string>([p.id]);
+      while (stack.length > 0) {
+        const id = stack.pop()!;
+        if (seen.has(id)) continue;
+        seen.add(id);
+        total++;
+        stack.push(...(childrenByParent.get(id) ?? []));
+      }
+      counts.set(p.id, total);
+    }
+    return counts;
+  }, [data.people, childrenByParent]);
+
+  /** Everyone hidden because an ancestor is collapsed (descendants, not the collapsed node). */
+  const hiddenIds = useMemo(() => {
+    const hidden = new Set<string>();
+    const stack = [...collapsedIds];
+    while (stack.length > 0) {
+      const id = stack.pop()!;
+      for (const childId of childrenByParent.get(id) ?? []) {
+        if (!hidden.has(childId)) {
+          hidden.add(childId);
+          stack.push(childId);
+        }
+      }
+    }
+    return hidden;
+  }, [collapsedIds, childrenByParent]);
+
+  // Close the drawer if the selected person becomes hidden by a collapse.
+  useEffect(() => {
+    if (selectedId && hiddenIds.has(selectedId)) setSelectedId(null);
+  }, [selectedId, hiddenIds]);
+
+  // Zoom to a person once the branch containing them is visible again.
+  useEffect(() => {
+    if (!pendingFocusId) return;
+    fitView({ nodes: [{ id: pendingFocusId }], padding: 0.4, duration: 500 });
+    setPendingFocusId(null);
+  }, [pendingFocusId, fitView]);
+
+  const toggleCollapse = useCallback((id: string) => {
+    setCollapsedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const expandAll = useCallback(() => setCollapsedIds(new Set()), []);
+
+  /** Expand every collapsed ancestor of a person so they become visible. */
+  const expandAncestors = useCallback(
+    (personId: string) => {
+      setCollapsedIds((prev) => {
+        const next = new Set(prev);
+        const stack = [personId];
+        const seen = new Set<string>();
+        while (stack.length > 0) {
+          const id = stack.pop()!;
+          if (seen.has(id)) continue;
+          seen.add(id);
+          next.delete(id);
+          stack.push(...(parentsByChild.get(id) ?? []));
+        }
+        return next;
+      });
+    },
+    [parentsByChild]
+  );
+
+  // ---- Visible subset + layout (re-laid out so remaining branches reflow) ----
+  const visible = useMemo(() => {
+    const people = data.people.filter((p) => !hiddenIds.has(p.id));
+    const links = data.links.filter(
+      (l) => !hiddenIds.has(l.parentId) && !hiddenIds.has(l.childId)
+    );
+    return { people, links };
+  }, [data, hiddenIds]);
+
+  // Keep links from visible parents (their children may be hidden by a
+  // collapsed branch — the couple must stay aligned) but drop links from
+  // hidden parents, so a hidden shared spouse can't merge unrelated couples
+  // into one unit. The visible set is closed under parents, so a visible
+  // person's own parent links are always kept.
+  const layoutLinks = useMemo(
+    () => data.links.filter((l) => !hiddenIds.has(l.parentId)),
+    [data.links, hiddenIds]
+  );
+  const layout = useMemo(
+    () => layoutTree(visible.people, layoutLinks),
+    [visible.people, layoutLinks]
+  );
 
   const peopleById = useMemo(
     () => new Map(data.people.map((p) => [p.id, p])),
@@ -70,10 +196,14 @@ function TreeCanvasInner({
           person: n.person,
           generationColor:
             GENERATION_COLORS[n.generation % GENERATION_COLORS.length],
+          hasChildren: (childrenByParent.get(n.id)?.length ?? 0) > 0,
+          collapsed: collapsedIds.has(n.id),
+          hiddenCount: descendantCount.get(n.id) ?? 0,
+          onToggleCollapse: toggleCollapse,
         },
         draggable: false,
       })),
-    [layout]
+    [layout, collapsedIds, childrenByParent, descendantCount, toggleCollapse]
   );
 
   const edges = useMemo<Edge[]>(
@@ -103,13 +233,15 @@ function TreeCanvasInner({
         .filter((p): p is NonNullable<typeof p> => Boolean(p))
     : [];
 
+  const hasCollapsed = collapsedIds.size > 0;
+
   return (
     <div className="relative h-full w-full">
       <PersonSearch
         onSelect={(personId) => {
+          expandAncestors(personId);
           setSelectedId(personId);
-          // Zoom the chosen person into view (fitView targets a single node).
-          fitView({ nodes: [{ id: personId }], padding: 0.4, duration: 500 });
+          setPendingFocusId(personId);
         }}
       />
 
@@ -136,7 +268,18 @@ function TreeCanvasInner({
           position="bottom-left"
           showInteractive={false}
           className="!bg-[#161b22] !border-gray-700 [&>button]:!bg-[#161b22] [&>button]:!text-gray-300 [&>button]:!border-gray-700"
-        />
+        >
+          {hasCollapsed && (
+            <ControlButton
+              onClick={expandAll}
+              title="Expand all branches"
+              aria-label="Expand all branches"
+              className="!w-7 !h-7 text-sm font-bold"
+            >
+              ⤢
+            </ControlButton>
+          )}
+        </Controls>
         <MiniMap
           position="bottom-right"
           pannable

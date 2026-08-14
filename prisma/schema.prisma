@@ -1,0 +1,114 @@
+// Family Tree schema — see PLAN.md §3 for the data model rationale.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum PersonStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ParentRole {
+  FATHER
+  MOTHER
+  PARENT
+  GUARDIAN
+}
+
+enum UserRole {
+  ADMIN
+  MEMBER
+}
+
+/// One row per person in the tree.
+model Person {
+  id         String       @id @default(cuid())
+  firstName  String
+  lastName   String
+  maidenName String?
+  gender     Gender?
+  birthDate  DateTime?
+  birthPlace String?
+  deathDate  DateTime?
+  deathPlace String?
+  photoUrl   String?
+  bio        String?
+  isLiving   Boolean      @default(true)
+  status     PersonStatus @default(PENDING)
+  /// Supabase Auth user id of the submitter
+  createdBy  String?
+  /// Soft delete for rejected entries (keeps an audit trail)
+  deletedAt  DateTime?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  parents  PersonParent[] @relation("parentChild")
+  children PersonParent[] @relation("childParent")
+  profile  Profile?
+  edits    PendingEdit[]
+
+  @@index([lastName, firstName])
+  @@index([status])
+}
+
+/// Parent ↔ child links. A person can have up to two parents (father + mother)
+/// and any number of children — the whole tree is a directed acyclic graph.
+model PersonParent {
+  id        String     @id @default(cuid())
+  childId   String
+  parentId  String
+  role      ParentRole @default(PARENT)
+  createdAt DateTime   @default(now())
+
+  child  Person @relation("parentChild", fields: [childId], references: [id], onDelete: Cascade)
+  parent Person @relation("childParent", fields: [parentId], references: [id], onDelete: Cascade)
+
+  @@unique([childId, parentId])
+  @@index([parentId])
+  @@index([childId])
+}
+
+/// Links a Supabase Auth account to the Person node that represents them.
+model Profile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  personId  String   @unique
+  role      UserRole @default(MEMBER)
+  createdAt DateTime @default(now())
+
+  person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@index([role])
+}
+
+/// Moderation queue. New people and proposed edits are created with
+/// status = PENDING plus a row here so an admin can review them.
+model PendingEdit {
+  id          String   @id @default(cuid())
+  personId    String
+  requestType String // ADD_PERSON | ADD_CHILD_LINK | EDIT_PERSON
+  submittedBy String?
+  submittedAt DateTime @default(now())
+  reviewedBy  String?
+  reviewedAt  DateTime?
+  decision    String? // APPROVED | REJECTED
+  adminNote   String?
+
+  person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@index([submittedAt])
+  @@index([decision])
+}

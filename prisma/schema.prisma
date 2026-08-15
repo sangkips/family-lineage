@@ -33,6 +33,15 @@ enum UserRole {
   MEMBER
 }
 
+/// How much of a date was actually known. Ancestors are usually remembered by
+/// year alone, and storing 1948-01-01 without this would invent a precision
+/// nobody gave us.
+enum DatePrecision {
+  YEAR
+  MONTH
+  DAY
+}
+
 /// One row per person in the tree.
 model Person {
   id         String       @id @default(cuid())
@@ -41,6 +50,7 @@ model Person {
   maidenName String?
   gender     Gender?
   birthDate  DateTime?
+  birthDatePrecision DatePrecision @default(DAY)
   birthPlace String?
   deathDate  DateTime?
   deathPlace String?
@@ -101,21 +111,57 @@ model Profile {
   @@index([role])
 }
 
-/// Moderation queue. New people and proposed edits are created with
-/// status = PENDING plus a row here so an admin can review them.
-model PendingEdit {
-  id          String   @id @default(cuid())
-  personId    String
-  requestType String // ADD_PERSON | ADD_CHILD_LINK | EDIT_PERSON
-  submittedBy String?
-  submittedAt DateTime @default(now())
-  reviewedBy  String?
-  reviewedAt  DateTime?
-  decision    String? // APPROVED | REJECTED
-  adminNote   String?
+/// One contribution from one visitor = one review decision.
+///
+/// A submission can carry several people (someone plus the parents they typed
+/// in), and the admin approves or rejects the bundle as a unit — so the
+/// decision lives here on a single row rather than being spread across the
+/// PendingEdit rows where it would have to be kept consistent.
+model Submission {
+  id   String @id @default(cuid())
+  kind String // ADD_PEOPLE | EDIT_PERSON
 
-  person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+  /// Salted hash of the submitter's IP — never the address itself.
+  /// Contributors are anonymous by design; this exists only so a flood of junk
+  /// can be rejected as one batch instead of one row at a time.
+  submitterHash String?
+  submittedAt   DateTime @default(now())
+
+  decision   String? // APPROVED | REJECTED
+  reviewedBy String?
+  reviewedAt DateTime?
+  adminNote  String?
+
+  edits PendingEdit[]
+
+  @@index([decision, submittedAt])
+}
+
+/// One person, or one proposed edit, inside a submission.
+model PendingEdit {
+  id           String  @id @default(cuid())
+  personId     String
+  requestType  String // ADD_PERSON | EDIT_PERSON
+  submissionId String?
+
+  /// Proposed field values for an EDIT_PERSON request. A correction must not
+  /// flip a live approved person to PENDING — that would pull them out of the
+  /// public tree while they wait — so the changes wait here until approval.
+  payload Json?
+
+  /// Set when the admin resolved this person as someone already in the tree:
+  /// the child's link is re-pointed at that person and this duplicate dropped.
+  mergedIntoId String?
+
+  /// People already in the tree who look like this one, captured at submit
+  /// time so the admin sees the duplicate warning while reviewing.
+  duplicateIds String[]
+
+  submittedAt DateTime @default(now())
+
+  person     Person      @relation(fields: [personId], references: [id], onDelete: Cascade)
+  submission Submission? @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 
   @@index([submittedAt])
-  @@index([decision])
+  @@index([submissionId])
 }

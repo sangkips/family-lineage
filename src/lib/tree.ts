@@ -6,6 +6,7 @@ import { getOrCreateProfile, type AuthUser } from "./profile";
 
 export type Gender = "MALE" | "FEMALE" | "OTHER";
 export type ParentRole = "FATHER" | "MOTHER" | "PARENT" | "GUARDIAN";
+export type DatePrecision = "YEAR" | "MONTH" | "DAY";
 
 export type PersonStatusDTO = "PENDING" | "APPROVED";
 
@@ -16,11 +17,13 @@ export type PersonDTO = {
   maidenName: string | null;
   gender: Gender | null;
   birthDate: string | null;
+  /** How much of `birthDate` was actually known — "1948" vs "12 April 1948". */
+  birthDatePrecision: DatePrecision;
   deathDate: string | null;
   birthPlace: string | null;
   bio: string | null;
   isLiving: boolean;
-  /** APPROVED entries are public; PENDING ones only render for their submitter / admins. */
+  /** APPROVED entries are public; PENDING ones only render for admins. */
   status: PersonStatusDTO;
 };
 
@@ -44,6 +47,7 @@ type PersonRow = {
   maidenName: string | null;
   gender: Gender | null;
   birthDate: Date | null;
+  birthDatePrecision: DatePrecision;
   deathDate: Date | null;
   birthPlace: string | null;
   bio: string | null;
@@ -60,30 +64,19 @@ type LinkRow = {
   role: ParentRole;
 };
 
-const PERSON_COLUMNS = `"id", "firstName", "lastName", "maidenName", "gender", "birthDate", "deathDate", "birthPlace", "bio", "isLiving", "hideBirthDate", "hideFullName", "status"`;
+const PERSON_COLUMNS = `"id", "firstName", "lastName", "maidenName", "gender", "birthDate", "birthDatePrecision", "deathDate", "birthPlace", "bio", "isLiving", "hideBirthDate", "hideFullName", "status"`;
 
 /**
- * Who is looking at the tree. Controls whether PENDING people (ghost nodes)
- * are included: a signed-in member sees their own submissions, an admin sees
- * all of them, and anonymous visitors see approved entries only.
+ * Who is looking at the tree. Contributors are anonymous, so there are only
+ * two audiences: the admin, who sees pending entries awaiting review, and
+ * everyone else, who sees the approved register.
  */
-export type TreeViewer = {
-  userId: string;
-  isAdmin: boolean;
-  /** The Person node this account claimed, if any (null before claiming). */
-  personId: string | null;
-} | null;
+export type TreeViewer = { isAdmin: boolean } | null;
 
 /** Resolve what a signed-in user is allowed to see in the tree. */
 export async function resolveViewer(user: AuthUser): Promise<TreeViewer> {
-  // getOrCreateProfile lazily creates the Profile (with ADMIN role granted
-  // from ADMIN_EMAILS) so admins exist from the moment they sign in.
   const profile = await getOrCreateProfile(user);
-  return {
-    userId: user.id,
-    isAdmin: profile.role === UserRole.ADMIN,
-    personId: profile.personId ?? null,
-  };
+  return { isAdmin: profile.role === UserRole.ADMIN };
 }
 
 /**
@@ -107,11 +100,7 @@ export async function getTree(
     ? Prisma.sql`p."id" = ${options.rootId}`
     : Prisma.sql`NOT EXISTS (SELECT 1 FROM "PersonParent" pp WHERE pp."childId" = p."id")`;
 
-  const pendingClause = options.viewer
-    ? options.viewer.isAdmin
-      ? Prisma.sql`TRUE`
-      : Prisma.sql`p."createdBy" = ${options.viewer.userId}`
-    : Prisma.sql`FALSE`;
+  const pendingClause = options.viewer?.isAdmin ? Prisma.sql`TRUE` : Prisma.sql`FALSE`;
 
   const visible = Prisma.sql`(
     p."status" = 'APPROVED'
@@ -150,13 +139,11 @@ export async function getTree(
 
   // Privacy: living members who opt out of sharing birth details or their
   // full name are redacted for everyone except admins and themselves.
-  const viewer = options.viewer;
+  const isAdmin = options.viewer?.isAdmin === true;
   const people: PersonDTO[] = peopleRows.map((p) => {
-    const isSelf = viewer?.personId === p.id;
-    const isAdmin = viewer?.isAdmin === true;
     // Privacy toggles only apply while the person is living — deceased
     // relatives' records are historical and always public.
-    const canSeeFull = !p.isLiving || isSelf || isAdmin;
+    const canSeeFull = !p.isLiving || isAdmin;
     const hideBirth = !canSeeFull && p.hideBirthDate;
     const hideName = !canSeeFull && p.hideFullName;
 
@@ -167,6 +154,7 @@ export async function getTree(
       maidenName: hideName ? null : p.maidenName,
       gender: p.gender,
       birthDate: hideBirth ? null : p.birthDate ? p.birthDate.toISOString() : null,
+      birthDatePrecision: p.birthDatePrecision,
       deathDate: p.deathDate ? p.deathDate.toISOString() : null,
       birthPlace: hideBirth ? null : p.birthPlace,
       bio: p.bio,

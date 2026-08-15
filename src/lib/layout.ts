@@ -24,23 +24,33 @@ export type LayoutResult = {
 
 // ---- Constants ----
 
-export const GENERATION_LABELS = [
-  "Great-great-grandparents",
-  "Great-grandparents",
-  "Grandparents",
-  "Parents",
-  "You & siblings",
-  "Children",
-  "Grandchildren",
-  "Great-grandchildren",
-] as const;
-
 export const NODE_WIDTH = 200;
 export const NODE_HEIGHT = 78;
+/** Narrower cards on a phone, where 200px is half the screen. */
+export const NODE_WIDTH_COMPACT = 156;
 const NODE_H_GAP = 28; // gap between adjacent nodes in the same row
-// Couple members sit side by side, one full slot apart (like roadmap.sh cards).
-const COUPLE_OFFSET = NODE_WIDTH + NODE_H_GAP;
+const NODE_H_GAP_COMPACT = 18;
 const ROW_HEIGHT = 150; // vertical gap between generations
+const ROW_HEIGHT_COMPACT = 128;
+
+/** Pixel metrics for a layout pass — mobile uses the compact set. */
+export type LayoutMetrics = {
+  nodeWidth: number;
+  nodeGap: number;
+  rowHeight: number;
+};
+
+export const DEFAULT_METRICS: LayoutMetrics = {
+  nodeWidth: NODE_WIDTH,
+  nodeGap: NODE_H_GAP,
+  rowHeight: ROW_HEIGHT,
+};
+
+export const COMPACT_METRICS: LayoutMetrics = {
+  nodeWidth: NODE_WIDTH_COMPACT,
+  nodeGap: NODE_H_GAP_COMPACT,
+  rowHeight: ROW_HEIGHT_COMPACT,
+};
 
 // ---- Algorithm ----
 //
@@ -66,7 +76,8 @@ type Unit = {
 
 export function layoutTree(
   people: PersonDTO[],
-  links: ParentLinkDTO[]
+  links: ParentLinkDTO[],
+  metrics: LayoutMetrics = DEFAULT_METRICS
 ): LayoutResult {
   const byId = new Map(people.map((p) => [p.id, p]));
 
@@ -214,13 +225,15 @@ export function layoutTree(
   }
 
   // ---- 6. Pixels ----
+  // Couple members sit side by side, one full slot apart (like roadmap.sh cards).
+  const slotWidth = metrics.nodeWidth + metrics.nodeGap;
   const nodes: TreeNode[] = [];
   for (const u of units) {
     u.members.forEach((m, i) => {
       nodes.push({
         id: m.id,
-        x: u.slotX * (NODE_WIDTH + NODE_H_GAP) + i * COUPLE_OFFSET,
-        y: u.generation * ROW_HEIGHT,
+        x: u.slotX * slotWidth + i * slotWidth,
+        y: u.generation * metrics.rowHeight,
         generation: u.generation,
         person: byId.get(m.id)!,
       });

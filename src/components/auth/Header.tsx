@@ -2,6 +2,7 @@ import Link from "next/link";
 import { UserRole } from "@/generated/prisma/client";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getOrCreateProfile } from "@/lib/profile";
+import HeaderMenu, { type HeaderMenuItem } from "./HeaderMenu";
 import SignOutButton from "./SignOutButton";
 
 type HeaderProps = {
@@ -15,88 +16,49 @@ export default async function Header({ peopleCount, linkCount }: HeaderProps) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Ensures every account has a Profile (ADMIN from ADMIN_EMAILS at signup).
   const profile = user ? await getOrCreateProfile(user) : null;
   const isAdmin = profile?.role === UserRole.ADMIN;
-  // Has this member claimed a node yet? Controls Claim me vs Edit profile.
-  const hasClaimed = Boolean(profile?.personId);
+
+  // Contributing needs no account, so "Add yourself" is the primary action for
+  // everyone. Sign-in is not offered here — the admin navigates to /login.
+  const menuItems: HeaderMenuItem[] = isAdmin
+    ? [
+        { href: "/admin", label: "Moderation queue", tone: "admin" as const },
+        { href: "/add", label: "Add a person" },
+      ]
+    : [{ href: "/add", label: "Add a person" }];
 
   return (
-    <header className="flex items-center justify-between border-b border-gray-800 px-6 py-3">
-      <div className="flex items-baseline gap-3">
-        <Link href="/" className="text-lg font-bold text-gray-100 hover:text-white">
+    <header className="flex items-center justify-between gap-3 border-b border-gray-800 px-4 py-2.5 sm:px-6 sm:py-3">
+      <div className="flex min-w-0 items-baseline gap-3">
+        <Link
+          href="/"
+          className="shrink-0 text-base font-bold text-gray-100 hover:text-white sm:text-lg"
+        >
           Family Tree
         </Link>
         {typeof peopleCount === "number" && (
-          <p className="text-sm text-gray-400">
+          <p className="hidden text-sm text-gray-400 sm:block">
             {peopleCount} people · {linkCount ?? 0} parent links
           </p>
         )}
       </div>
 
-      <div className="flex items-center gap-3">
-        <a
-          href="/api/export/gedcom"
-          className="rounded-lg border border-gray-700 bg-[#161b22] px-3 py-1.5 text-xs text-gray-300 transition-colors hover:border-gray-600 hover:text-gray-100"
-        >
-          Export GEDCOM
-        </a>
-        <span className="hidden rounded-full border border-gray-700 bg-[#161b22] px-3 py-1 text-xs text-gray-400 md:inline">
+      <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+        <span className="hidden rounded-full border border-gray-700 bg-[#161b22] px-3 py-1 text-xs text-gray-400 lg:inline">
           Scroll to zoom · Drag to pan · Click a person for details
         </span>
 
-        {user ? (
-          <>
-            <Link
-              href="/add"
-              className="rounded-lg border border-gray-700 bg-[#161b22] px-3 py-1.5 text-xs text-gray-300 transition-colors hover:border-gray-600 hover:text-gray-100"
-            >
-              Add child
-            </Link>
-            {hasClaimed ? (
-              <Link
-                href="/profile"
-                className="rounded-lg border border-gray-700 bg-[#161b22] px-3 py-1.5 text-xs text-gray-300 transition-colors hover:border-gray-600 hover:text-gray-100"
-              >
-                Edit profile
-              </Link>
-            ) : (
-              <Link
-                href="/claim"
-                className="rounded-lg bg-[#58a6ff] px-3 py-1.5 text-xs font-semibold text-[#0d1117] transition-opacity hover:opacity-90"
-              >
-                Claim me
-              </Link>
-            )}
-            {isAdmin && (
-              <Link
-                href="/admin"
-                className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-300 transition-colors hover:border-amber-500/70 hover:bg-amber-500/20"
-              >
-                Admin
-              </Link>
-            )}
-            <span className="max-w-[160px] truncate text-xs text-gray-400">
-              {user.email}
-            </span>
-            <SignOutButton />
-          </>
-        ) : (
-          <>
-            <Link
-              href="/login"
-              className="rounded-lg border border-gray-700 bg-[#161b22] px-3 py-1.5 text-xs text-gray-300 transition-colors hover:border-gray-600 hover:text-gray-100"
-            >
-              Sign in
-            </Link>
-            <Link
-              href="/signup"
-              className="rounded-lg bg-[#58a6ff] px-3 py-1.5 text-xs font-semibold text-[#0d1117] transition-opacity hover:opacity-90"
-            >
-              Sign up
-            </Link>
-          </>
-        )}
+        <Link
+          href="/add"
+          className="flex min-h-11 items-center rounded-lg bg-[#58a6ff] px-3 text-xs font-semibold text-[#0d1117] transition-opacity hover:opacity-90 sm:min-h-9"
+        >
+          Add yourself
+        </Link>
+
+        <HeaderMenu items={menuItems} email={user?.email}>
+          {user && <SignOutButton />}
+        </HeaderMenu>
       </div>
     </header>
   );

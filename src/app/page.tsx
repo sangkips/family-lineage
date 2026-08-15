@@ -7,7 +7,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  // Signed-in members see their own PENDING ghost nodes (admins see all).
+  // Only an admin sees entries still waiting for review.
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
@@ -19,7 +19,7 @@ export default async function Home() {
     <main className="flex h-dvh flex-col bg-[#0d1117] text-gray-100">
       <Header peopleCount={data.people.length} linkCount={data.links.length} />
       <div className="min-h-0 flex-1">
-        <TreeCanvas data={data} viewerPersonId={viewer?.personId ?? null} />
+        <TreeCanvas data={data} />
       </div>
     </main>
   );

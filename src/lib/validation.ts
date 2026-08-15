@@ -52,6 +52,49 @@ export async function findPotentialDuplicates(input: {
   });
 }
 
+// ---- Hanging people ----
+
+export class HangingPersonError extends Error {
+  constructor() {
+    super(
+      "Everyone must be connected to at least one relative — add them as someone's child, or as the parent of someone already in the tree."
+    );
+    this.name = "HangingPersonError";
+  }
+}
+
+/**
+ * Would this person be left connected to nobody?
+ *
+ * Someone with no link in either direction is not part of a lineage tree —
+ * they render as a card stranded beside it. The single exception is the very
+ * first person saved into an empty tree, who has nobody to link to yet;
+ * their spouse arrives later as the co-parent of their first child.
+ *
+ * Kept as a pure function so the rule can be tested without a database.
+ */
+export function isHangingPerson(linkCount: number, otherPeopleCount: number): boolean {
+  if (linkCount > 0) return false;
+  return otherPeopleCount > 0;
+}
+
+/** Guard for transaction callbacks: throws if `personId` ends up unlinked. */
+export async function assertNotHanging(
+  client: CycleClient,
+  personId: string
+): Promise<void> {
+  const [linkCount, otherPeopleCount] = await Promise.all([
+    client.personParent.count({
+      where: { OR: [{ childId: personId }, { parentId: personId }] },
+    }),
+    client.person.count({ where: { id: { not: personId }, deletedAt: null } }),
+  ]);
+
+  if (isHangingPerson(linkCount, otherPeopleCount)) {
+    throw new HangingPersonError();
+  }
+}
+
 // ---- Cycle prevention ----
 
 export class CycleValidationError extends Error {

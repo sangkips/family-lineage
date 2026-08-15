@@ -19,9 +19,12 @@ function adminEmails(): string[] {
  *   time any page/API resolves them.
  * - If their email is in `ADMIN_EMAILS`, they are created as ADMIN — and
  *   **re-promoted on every check**, so adding an address to the env var takes
- *   effect immediately (no re-claim, no manual DB edit).
- * - Bootstrap: if no profiles exist yet, the first account becomes ADMIN, so
- *   a fresh deployment has an admin even without configuring ADMIN_EMAILS.
+ *   effect immediately (no manual DB edit).
+ *
+ * `ADMIN_EMAILS` is the only route to ADMIN. There used to be a bootstrap that
+ * promoted the first account in an empty database, which on a fresh deployment
+ * with a reachable sign-up page hands admin to whichever stranger arrives
+ * first. A MEMBER account can do nothing an anonymous visitor cannot.
  *
  * The role is deliberately never downgraded by this function.
  */
@@ -44,11 +47,10 @@ export async function getOrCreateProfile(user: AuthUser) {
     return existing;
   }
 
-  const profileCount = await prisma.profile.count();
-  const role =
-    wantsAdmin || profileCount === 0 ? UserRole.ADMIN : UserRole.MEMBER;
-
   return prisma.profile.create({
-    data: { userId: user.id, role },
+    data: {
+      userId: user.id,
+      role: wantsAdmin ? UserRole.ADMIN : UserRole.MEMBER,
+    },
   });
 }

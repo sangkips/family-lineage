@@ -178,43 +178,51 @@ SELECT * FROM subtree;
 2. Pan/zoom; click a card → profile drawer (bio, dates, photo, children).
 3. Click "expand" on a person → lazy-load their descendants.
 
-### B. Register & claim yourself
-1. Sign up with email/password (Supabase Auth).
-2. Search for your parents in the tree → select them.
-3. Submit "this is me" with your details → creates a `PENDING` person + link
-   to your parents. Admin approves; your account is now bound to that node.
+### B. Add yourself or a relative — no account
+1. Tap "Add yourself" (or "Add child under …" on a person's card). No sign-in.
+2. Choose the parents from the register, or type in a parent who isn't in it
+   yet — one submission carries the person plus up to two parents.
+3. Everything is created `PENDING` and is invisible to the public. There is no
+   receipt: contributors are anonymous, so there is nothing to link them to.
 
-### C. Member adds a child to a parent
-1. Logged-in member opens a person card → "Add child".
-2. Enters the child's details (name, dates, gender, photo).
-3. New person created as `PENDING` with a parent link → shows dashed in tree.
-4. Admin approves in the moderation queue → goes live.
+### C. Suggest a correction — no account
+1. Open a person → "Suggest a correction", change what is wrong.
+2. Only the changed fields are sent, and they are parked on the PendingEdit —
+   the live person is untouched until an admin approves, so a correction can
+   never pull an approved relative off the tree while it waits.
 
 ### D. Admin moderation
-1. Admin dashboard lists pending edits with a side-by-side diff.
-2. Approve → `status = APPROVED`. Reject → soft delete with a note.
+1. The admin (the only account in the system) reviews one card per submission,
+   editing any field in place.
+2. A look-alike already in the register can be merged: the child's link is
+   re-pointed at the real person and the duplicate dropped.
+3. Approve → `status = APPROVED`. Reject → soft delete with a note.
+4. "Not connected to anyone" lists people with no parent and no child, left
+   over from before the guard; the admin deletes them.
 
 ---
 
 ## 6. API surface (Next.js route handlers)
 
-| Method | Route                          | Auth   | Purpose |
-|--------|--------------------------------|--------|---------|
-| GET    | `/api/tree?rootId=&depth=`     | public | Subtree via recursive CTE |
-| GET    | `/api/people/:id`              | public | Person detail + parents + children |
-| POST   | `/api/people`                  | member | Create person (status=PENDING) |
-| POST   | `/api/people/:id/parents`      | member | Link child to a parent (PENDING) |
-| PATCH  | `/api/people/:id`              | member | Edit own node / propose edit (PENDING) |
-| GET    | `/api/admin/pending`           | admin  | Moderation queue |
-| POST   | `/api/admin/pending/:id`       | admin  | Approve / reject |
-| POST   | `/api/profile/claim`           | member | Bind account to a person node |
-| GET    | `/api/search?q=`               | public | Name search (later phase) |
+| Method | Route                           | Auth      | Purpose |
+|--------|---------------------------------|-----------|---------|
+| GET    | `/api/tree?rootId=&depth=`      | public    | Subtree via recursive CTE |
+| GET    | `/api/search?q=`                | public    | Name search |
+| POST   | `/api/submissions`              | **none**  | Add people, or suggest a correction |
+| PATCH  | `/api/people/:id`               | admin     | Edit a person in the register |
+| GET    | `/api/admin/submissions`        | admin     | Moderation queue |
+| POST   | `/api/admin/submissions/:id`    | admin     | Approve (with edits + merges) / reject |
+| GET    | `/api/admin/hanging`            | admin     | People connected to nobody |
+| DELETE | `/api/admin/people/:id`         | admin     | Delete a hanging person |
 
 All write endpoints validate:
-- **Cycle prevention** — a person can never become their own ancestor
-  (check with a recursive query before inserting a parent link).
-- **Duplicate detection** — warn if first+last name + birth date already exist.
-- **Ownership** — members can only edit their own node (admins edit anything).
+- **Cycle prevention** — a person can never become their own ancestor. Re-run
+  on merge, since re-pointing a link can close a loop that was impossible at
+  submit time when everyone in the bundle was a fresh leaf.
+- **Duplicate detection** — look-alikes are recorded on the PendingEdit so the
+  admin sees them while reviewing, and can merge instead of duplicating.
+- **No hanging people** — everyone needs at least one link in either
+  direction. Sole exception: the very first person saved into an empty tree.
 
 ---
 

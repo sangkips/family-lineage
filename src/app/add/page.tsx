@@ -1,26 +1,20 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
-import ChildWizard from "@/components/claim/ChildWizard";
+import SubmissionForm from "@/components/submit/SubmissionForm";
 import { PersonStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-export default async function AddChildPage({
+/**
+ * /add — the public front door. No sign-in: anyone in the family can add
+ * themselves or a relative, and an admin approves it before it goes live.
+ */
+export default async function AddPage({
   searchParams,
 }: {
   searchParams: Promise<{ parentId?: string }>;
 }) {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
-
-  // Optional preselected parent from the "Add child" button in the drawer.
+  // Optional parent pre-selected by "Add child under …" on a person's card.
   const { parentId } = await searchParams;
   let initialParent: { id: string; name: string } | null = null;
   if (parentId) {
@@ -37,12 +31,23 @@ export default async function AddChildPage({
   }
 
   return (
-    <main className="min-h-dvh bg-[#0d1117] px-4 py-10 text-gray-100">
+    <main className="min-h-dvh bg-[#0d1117] px-4 py-8 text-gray-100 sm:py-10">
       <div className="mx-auto w-full max-w-2xl">
         <Link href="/" className="text-sm text-[#58a6ff] hover:underline">
           ← Back to tree
         </Link>
-        <ChildWizard mode="add" initialParent={initialParent} />
+
+        <h1 className="mt-4 text-xl font-bold sm:text-2xl">
+          {initialParent
+            ? `Add a child under ${initialParent.name}`
+            : "Add yourself or a relative"}
+        </h1>
+        <p className="mt-1 text-sm leading-relaxed text-gray-400">
+          Tell us who they are and who their parents are. A tree admin checks
+          every entry before it appears on the tree.
+        </p>
+
+        <SubmissionForm initialParent={initialParent} />
       </div>
     </main>
   );

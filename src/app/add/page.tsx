@@ -1,6 +1,7 @@
 import Link from "next/link";
 import SubmissionForm from "@/components/submit/SubmissionForm";
 import { PersonStatus } from "@/generated/prisma/client";
+import { spousesOf } from "@/lib/household";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +36,16 @@ export default async function AddPage({
     }
   }
 
+  // A child born into a household belongs to both partners, so the spouse is
+  // offered without anyone having to search for them. With more than one
+  // marriage on record the choice is shown rather than guessed.
+  const spouses = initialParent ? await spousesOf(prisma, initialParent.id) : [];
+  const spouseOptions = spouses.map((spouse) => ({
+    id: spouse.id,
+    name: `${spouse.firstName} ${spouse.lastName}`,
+    gender: spouse.gender,
+  }));
+
   return (
     <main className="min-h-dvh bg-[#0d1117] px-4 py-8 text-gray-100 sm:py-10">
       <div className="mx-auto w-full max-w-2xl">
@@ -52,7 +63,7 @@ export default async function AddPage({
           every entry before it appears on the tree.
         </p>
 
-        <SubmissionForm initialParent={initialParent} />
+        <SubmissionForm initialParent={initialParent} spouseOptions={spouseOptions} />
       </div>
     </main>
   );

@@ -55,7 +55,15 @@ export default async function AdminPage() {
       take: 50,
     }),
     prisma.person.findMany({
-      where: { deletedAt: null, parents: { none: {} }, children: { none: {} } },
+      where: {
+        deletedAt: null,
+        parents: { none: {} },
+        children: { none: {} },
+        // A marriage connects someone just as surely as a parent link does,
+        // so a spouse who married in is not stranded.
+        marriagesAsA: { none: {} },
+        marriagesAsB: { none: {} },
+      },
       select: {
         id: true,
         firstName: true,

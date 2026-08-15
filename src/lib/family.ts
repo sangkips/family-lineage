@@ -15,6 +15,20 @@ export type FamilyGeneration = {
   people: FamilyMember[];
 };
 
+/** Children one partner had with someone else, or with no father recorded. */
+export type PartnerOnlyChildren = {
+  partnerId: string;
+  partnerName: string;
+  people: FamilyMember[];
+};
+
+export type CoupleFamily = {
+  /** Descendants of the two of them together. */
+  generations: FamilyGeneration[];
+  /** Children of one partner alone — shown, but never reparented. */
+  otherChildren: PartnerOnlyChildren[];
+};
+
 const GENERATION_TITLES = ["Children", "Grandchildren", "Great-grandchildren"];
 
 /**
@@ -27,7 +41,7 @@ const GENERATION_TITLES = ["Children", "Grandchildren", "Great-grandchildren"];
 export async function descendantsOfCouple(
   partnerAId: string,
   partnerBId: string
-): Promise<FamilyGeneration[]> {
+): Promise<CoupleFamily> {
   // Children of this couple: a child linked to both partners.
   const linksToPartners = await prisma.personParent.findMany({
     where: { parentId: { in: [partnerAId, partnerBId] } },
@@ -38,10 +52,16 @@ export async function descendantsOfCouple(
   for (const link of linksToPartners) {
     parentCount.set(link.childId, (parentCount.get(link.childId) ?? 0) + 1);
   }
-  // Both partners recorded → a shared child. Only one → a child from another
-  // relationship, which does not belong to this couple's family page.
+  // Both partners recorded → a shared child. Only one → a child that partner
+  // had elsewhere: listed further down, but never treated as the couple's,
+  // because a marriage does not make someone the parent of a child they are
+  // not recorded against.
   let currentIds = [...parentCount.entries()]
     .filter(([, count]) => count >= 2)
+    .map(([childId]) => childId);
+
+  const soloChildIds = [...parentCount.entries()]
+    .filter(([, count]) => count === 1)
     .map(([childId]) => childId);
 
   const generations: FamilyGeneration[] = [];
@@ -85,5 +105,66 @@ export async function descendantsOfCouple(
     currentIds = [...new Set(nextLinks.map((link) => link.childId))];
   }
 
-  return generations;
+  return {
+    generations,
+    otherChildren: await childrenOfEachPartnerAlone(
+      [partnerAId, partnerBId],
+      soloChildIds,
+      linksToPartners
+    ),
+  };
+}
+
+/** Group the solo children under whichever partner they belong to. */
+async function childrenOfEachPartnerAlone(
+  partnerIds: string[],
+  soloChildIds: string[],
+  links: { childId: string; parentId: string }[]
+): Promise<PartnerOnlyChildren[]> {
+  if (soloChildIds.length === 0) return [];
+
+  const [partners, children] = await Promise.all([
+    prisma.person.findMany({
+      where: { id: { in: partnerIds } },
+      select: { id: true, firstName: true, lastName: true },
+    }),
+    prisma.person.findMany({
+      where: {
+        id: { in: soloChildIds },
+        status: PersonStatus.APPROVED,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        birthDate: true,
+        isLiving: true,
+        hideBirthDate: true,
+      },
+      orderBy: [{ birthDate: "asc" }, { firstName: "asc" }],
+    }),
+  ]);
+
+  const childById = new Map(children.map((child) => [child.id, child]));
+
+  return partners
+    .map((partner) => ({
+      partnerId: partner.id,
+      partnerName: `${partner.firstName} ${partner.lastName}`,
+      people: links
+        .filter((link) => link.parentId === partner.id && childById.has(link.childId))
+        .map((link) => childById.get(link.childId)!)
+        .map((child) => ({
+          id: child.id,
+          firstName: child.firstName,
+          lastName: child.lastName,
+          birthYear:
+            child.isLiving && child.hideBirthDate
+              ? null
+              : (child.birthDate?.getUTCFullYear() ?? null),
+          isLiving: child.isLiving,
+        })),
+    }))
+    .filter((group) => group.people.length > 0);
 }

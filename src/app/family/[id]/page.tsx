@@ -65,7 +65,7 @@ export default async function FamilyPage({
 
   if (!marriage) notFound();
 
-  const generations = await descendantsOfCouple(
+  const { generations, otherChildren } = await descendantsOfCouple(
     marriage.partnerAId,
     marriage.partnerBId
   );
@@ -123,7 +123,7 @@ export default async function FamilyPage({
 
         {generations.length === 0 ? (
           <p className="mt-8 rounded-2xl border border-gray-800 bg-[#161b22] p-6 text-center text-sm text-gray-400">
-            No children recorded for this couple yet.
+            No children recorded for the two of them together.
           </p>
         ) : (
           <div className="mt-8 space-y-6">
@@ -140,6 +140,26 @@ export default async function FamilyPage({
             ))}
           </div>
         )}
+
+        {/* Children one partner had elsewhere. Shown so the household reads
+            completely, but never counted as the couple's own — a marriage
+            does not make someone the parent of a child born before it. */}
+        {otherChildren.map((group) => (
+          <section key={group.partnerId} className="mt-6">
+            <h2 className="text-sm font-semibold text-gray-200">
+              {group.partnerName.split(" ")[0]}&apos;s children from another
+              relationship
+              <span className="ml-2 font-normal text-gray-500">
+                {group.people.length}
+              </span>
+            </h2>
+            <p className="mt-1 text-xs text-gray-500">
+              Recorded under {group.partnerName} only — the other parent is
+              someone else, or is not recorded.
+            </p>
+            <MemberList people={group.people} />
+          </section>
+        ))}
       </div>
     </main>
   );

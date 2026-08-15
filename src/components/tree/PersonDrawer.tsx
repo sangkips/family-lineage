@@ -170,7 +170,7 @@ export default function PersonDrawer({
           onClick={() => router.push(`/marry/${person.id}`)}
           className="min-h-11 w-full rounded-lg border border-gray-700 bg-[#161b22] px-3 py-2 text-sm font-semibold text-gray-300 transition-colors hover:border-gray-600 hover:text-gray-100"
         >
-          ⚭ Record a marriage
+          {marriages.length > 0 ? "⚭ Edit marriage" : "⚭ Record a marriage"}
         </button>
         <button
           onClick={() => router.push(`/correct/${person.id}`)}

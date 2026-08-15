@@ -63,14 +63,29 @@ type PersonInput = {
 };
 
 type SubmissionBody = {
-  kind?: "ADD_PEOPLE" | "EDIT_PERSON" | "ADD_MARRIAGE";
+  kind?: "ADD_PEOPLE" | "EDIT_PERSON" | "ADD_MARRIAGE" | "EDIT_MARRIAGE";
+  /** EDIT_MARRIAGE */
+  marriageId?: string;
+  marriageChanges?: {
+    startYear?: number | null;
+    endYear?: number | null;
+    endReason?: string | null;
+  };
   person?: PersonInput;
   parents?: ParentInput[];
   personId?: string;
   changes?: PersonInput & { deathDate?: string | null; isLiving?: boolean };
   /** ADD_MARRIAGE */
   partnerAId?: string;
+  /** The spouse: either someone already in the register… */
   partnerBId?: string;
+  /** …or someone entered by hand, for a partner who married in. */
+  newPartner?: {
+    firstName?: string;
+    lastName?: string;
+    birthYear?: number | null;
+    gender?: Gender | null;
+  };
   startYear?: number | null;
   endYear?: number | null;
   endReason?: string | null;
@@ -135,6 +150,9 @@ export async function POST(request: NextRequest) {
     }
     if (body.kind === "ADD_MARRIAGE") {
       return await submitMarriage(body, hash, request);
+    }
+    if (body.kind === "EDIT_MARRIAGE") {
+      return await submitMarriageCorrection(body, hash, request);
     }
     return await submitPeople(body, hash, request);
   } catch (error) {
@@ -325,34 +343,26 @@ async function submitMarriage(
   hash: string | null,
   request: NextRequest
 ) {
-  const { partnerAId, partnerBId } = body;
-  if (!partnerAId || !partnerBId) {
-    throw new BadRequest("Both partners are required");
+  const { partnerAId, partnerBId, newPartner } = body;
+  if (!partnerAId) throw new BadRequest("The first partner is required");
+  if (!partnerBId && !newPartner) {
+    throw new BadRequest("Choose who they married, or enter that person's details");
   }
-  if (partnerAId === partnerBId) {
+  if (partnerBId && partnerAId === partnerBId) {
     throw new BadRequest("A person cannot be married to themselves");
   }
 
+  const knownIds = partnerBId ? [partnerAId, partnerBId] : [partnerAId];
   const partners = await prisma.person.findMany({
     where: {
-      id: { in: [partnerAId, partnerBId] },
+      id: { in: knownIds },
       status: PersonStatus.APPROVED,
       deletedAt: null,
     },
     select: { id: true, firstName: true, lastName: true },
   });
-  if (partners.length !== 2) {
-    throw new BadRequest("Both partners must already be in the register");
-  }
-
-  // Sorted so the pair is unique however it was entered.
-  const [aId, bId] = [partnerAId, partnerBId].sort();
-
-  const existing = await prisma.marriage.findUnique({
-    where: { partnerAId_partnerBId: { partnerAId: aId, partnerBId: bId } },
-  });
-  if (existing && !existing.deletedAt) {
-    throw new BadRequest("This marriage is already recorded or awaiting review");
+  if (partners.length !== knownIds.length) {
+    throw new BadRequest("One of the people you chose was not found in the register");
   }
 
   const startDate = yearToDate(body.startYear, "Wedding year");
@@ -367,10 +377,61 @@ async function submitMarriage(
     throw new BadRequest("Say whether it ended by divorce or by death");
   }
 
+  // Validate a hand-entered spouse before opening the transaction.
+  const spouseFirst = newPartner ? cleanName(newPartner.firstName, "Spouse's first name") : null;
+  const spouseLast = newPartner ? cleanName(newPartner.lastName, "Spouse's last name") : null;
+  const spouseBirth = newPartner ? resolveBirthDate({ birthYear: newPartner.birthYear }) : null;
+
+  if (partnerBId) {
+    const [aId, bId] = [partnerAId, partnerBId].sort();
+    const existing = await prisma.marriage.findUnique({
+      where: { partnerAId_partnerBId: { partnerAId: aId, partnerBId: bId } },
+    });
+    if (existing && !existing.deletedAt) {
+      throw new BadRequest("This marriage is already recorded or awaiting review");
+    }
+  }
+
   const submissionId = await prisma.$transaction(async (tx) => {
     const submission = await tx.submission.create({
       data: { kind: "ADD_MARRIAGE", submitterHash: hash },
     });
+
+    // Someone who married in has no blood tie to this family, so they cannot
+    // be entered through the "add a child" flow at all — the marriage itself
+    // is what connects them, and it is created alongside them here.
+    let spouseId = partnerBId ?? null;
+    if (!spouseId && spouseFirst && spouseLast && spouseBirth) {
+      const created = await tx.person.create({
+        data: {
+          firstName: spouseFirst,
+          lastName: spouseLast,
+          gender: cleanGender(newPartner?.gender),
+          birthDate: spouseBirth.birthDate,
+          birthDatePrecision: spouseBirth.precision,
+          status: PersonStatus.PENDING,
+          hideBirthDate: true,
+        },
+      });
+      spouseId = created.id;
+
+      const duplicates = await findPotentialDuplicates({
+        firstName: spouseFirst,
+        lastName: spouseLast,
+        birthDate: spouseBirth.birthDate,
+      });
+      await tx.pendingEdit.create({
+        data: {
+          personId: created.id,
+          requestType: "ADD_PERSON",
+          submissionId: submission.id,
+          duplicateIds: duplicates.map((d) => d.id),
+        },
+      });
+    }
+
+    // Sorted so the pair is unique however it was entered.
+    const [aId, bId] = [partnerAId, spouseId!].sort();
     const marriage = await tx.marriage.create({
       data: {
         partnerAId: aId,
@@ -389,13 +450,113 @@ async function submitMarriage(
         submissionId: submission.id,
       },
     });
+
+    // The marriage counts as a connection, so a spouse who married in is not
+    // treated as a stranded record.
+    if (!partnerBId && spouseId) await assertNotHanging(tx, spouseId);
+
     return submission.id;
   });
 
-  const names = partners.map((p) => `${p.firstName} ${p.lastName}`).join(" & ");
+  const names = [
+    ...partners.map((p) => `${p.firstName} ${p.lastName}`),
+    ...(partnerBId ? [] : [`${spouseFirst} ${spouseLast}`]),
+  ].join(" & ");
   void notifyAdminsOfPending({
     personName: names,
     requestType: "ADD_MARRIAGE",
+    submittedBy: null,
+    adminUrl: new URL("/admin", request.url).toString(),
+  });
+
+  return NextResponse.json({ ok: true, submissionId }, { status: 201 });
+}
+
+// ---- EDIT_MARRIAGE ----
+
+/**
+ * Correct a marriage already in the register — the wedding year, or when and
+ * how it ended. Like a person correction, the change waits on the PendingEdit
+ * and the live marriage is untouched until an admin approves it.
+ *
+ * The partners themselves are not editable here: changing who married whom is
+ * a different marriage, and should be recorded as one.
+ */
+async function submitMarriageCorrection(
+  body: SubmissionBody,
+  hash: string | null,
+  request: NextRequest
+) {
+  const { marriageId } = body;
+  if (!marriageId) throw new BadRequest("marriageId is required");
+
+  const marriage = await prisma.marriage.findFirst({
+    where: { id: marriageId, status: PersonStatus.APPROVED, deletedAt: null },
+    include: {
+      partnerA: { select: { firstName: true, lastName: true } },
+      partnerB: { select: { firstName: true, lastName: true } },
+    },
+  });
+  if (!marriage) {
+    return NextResponse.json({ error: "That marriage was not found" }, { status: 404 });
+  }
+
+  const changes = body.marriageChanges ?? {};
+  const payload: Prisma.JsonObject = {};
+
+  if (changes.startYear !== undefined) {
+    const startDate = yearToDate(changes.startYear, "Wedding year");
+    payload.startDate = startDate ? startDate.toISOString() : null;
+  }
+  if (changes.endYear !== undefined) {
+    const endDate = yearToDate(changes.endYear, "Year it ended");
+    payload.endDate = endDate ? endDate.toISOString() : null;
+  }
+  if (changes.endReason !== undefined) {
+    payload.endReason =
+      changes.endReason === "DIVORCE" || changes.endReason === "DEATH"
+        ? changes.endReason
+        : null;
+  }
+
+  if (Object.keys(payload).length === 0) {
+    throw new BadRequest("No changes were suggested");
+  }
+
+  // Compare against what the marriage would become, not just what was sent.
+  const nextStart =
+    payload.startDate !== undefined
+      ? (payload.startDate as string | null)
+      : (marriage.startDate?.toISOString() ?? null);
+  const nextEnd =
+    payload.endDate !== undefined
+      ? (payload.endDate as string | null)
+      : (marriage.endDate?.toISOString() ?? null);
+  if (nextStart && nextEnd && new Date(nextEnd) < new Date(nextStart)) {
+    throw new BadRequest("A marriage cannot end before it began");
+  }
+  if (nextEnd && payload.endReason === null) {
+    throw new BadRequest("Say whether it ended by divorce or by death");
+  }
+
+  const submissionId = await prisma.$transaction(async (tx) => {
+    const submission = await tx.submission.create({
+      data: { kind: "EDIT_MARRIAGE", submitterHash: hash },
+    });
+    await tx.pendingEdit.create({
+      data: {
+        marriageId: marriage.id,
+        requestType: "EDIT_MARRIAGE",
+        submissionId: submission.id,
+        payload,
+      },
+    });
+    return submission.id;
+  });
+
+  void notifyAdminsOfPending({
+    personName: `${marriage.partnerA.firstName} ${marriage.partnerA.lastName} & ${marriage.partnerB.firstName} ${marriage.partnerB.lastName}`,
+    requestType: "EDIT_MARRIAGE",
     submittedBy: null,
     adminUrl: new URL("/admin", request.url).toString(),
   });

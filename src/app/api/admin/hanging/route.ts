@@ -21,6 +21,9 @@ export async function GET(request: NextRequest) {
       deletedAt: null,
       parents: { none: {} },
       children: { none: {} },
+      // A marriage connects someone just as surely as a parent link does.
+      marriagesAsA: { none: {} },
+      marriagesAsB: { none: {} },
     },
     select: {
       id: true,

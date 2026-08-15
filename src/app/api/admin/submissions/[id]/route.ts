@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { DatePrecision, Gender, PersonStatus, Prisma } from "@/generated/prisma/client";
 import { requireAdmin } from "@/lib/admin";
+import { applyHouseholdParentage } from "@/lib/household";
 import { prisma } from "@/lib/prisma";
 import { assertNoCycle, CycleValidationError } from "@/lib/validation";
 
@@ -130,7 +131,10 @@ export async function POST(
           });
         }
 
+        // A rejected correction just evaporates; only proposed marriages are
+        // soft deleted.
         const marriageIds = submission.edits
+          .filter((edit) => edit.requestType === "ADD_MARRIAGE")
           .map((edit) => edit.marriageId)
           .filter((id): id is string => Boolean(id));
         if (marriageIds.length > 0) {
@@ -148,6 +152,28 @@ export async function POST(
               where: { id: edit.marriageId },
               data: { status: PersonStatus.APPROVED, deletedAt: null },
             });
+            // The household rule: the husband becomes the father of the
+            // wife's existing children. See lib/household.ts.
+            await applyHouseholdParentage(tx, edit.marriageId);
+            continue;
+          }
+
+          if (edit.requestType === "EDIT_MARRIAGE" && edit.marriageId) {
+            // Proposed dates were parked on the edit; apply them now.
+            const suggested = (edit.payload ?? {}) as {
+              startDate?: string | null;
+              endDate?: string | null;
+              endReason?: string | null;
+            };
+            const data: Prisma.MarriageUpdateInput = {};
+            if (suggested.startDate !== undefined) {
+              data.startDate = suggested.startDate ? new Date(suggested.startDate) : null;
+            }
+            if (suggested.endDate !== undefined) {
+              data.endDate = suggested.endDate ? new Date(suggested.endDate) : null;
+            }
+            if (suggested.endReason !== undefined) data.endReason = suggested.endReason;
+            await tx.marriage.update({ where: { id: edit.marriageId }, data });
             continue;
           }
 

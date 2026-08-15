@@ -4,6 +4,9 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/Toast";
 import { usePersonSearch } from "@/components/tree/usePersonSearch";
+import ExistingMarriage, {
+  type ExistingMarriageData,
+} from "@/components/submit/ExistingMarriage";
 
 const field =
   "w-full min-h-11 rounded-lg border border-gray-700 bg-[#0d1117] px-3 py-2 text-base outline-none focus:border-[#58a6ff] sm:min-h-0 sm:text-sm";
@@ -15,8 +18,25 @@ type Partner = { id: string; name: string };
  * Record who someone married. Both partners must already be in the register —
  * a marriage links two existing people rather than creating anyone.
  */
-export default function MarriageForm({ person }: { person: Partner }) {
+export default function MarriageForm({
+  person,
+  existing = [],
+}: {
+  person: Partner;
+  /** Marriages already recorded, shown for correction. */
+  existing?: ExistingMarriageData[];
+}) {
+  // With a marriage already on record, adding another is the rarer act, so it
+  // waits behind a button rather than being the first thing on the page.
+  const [addingAnother, setAddingAnother] = useState(existing.length === 0);
   const [spouse, setSpouse] = useState<Partner | null>(null);
+  /** Details for a spouse who married in and is not in the register. */
+  const [outsider, setOutsider] = useState<{
+    firstName: string;
+    lastName: string;
+    birthYear: string;
+    gender: "MALE" | "FEMALE" | "OTHER" | "";
+  } | null>(null);
   const [startYear, setStartYear] = useState("");
   const [ended, setEnded] = useState(false);
   const [endYear, setEndYear] = useState("");
@@ -32,8 +52,8 @@ export default function MarriageForm({ person }: { person: Partner }) {
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setError(null);
-    if (!spouse) {
-      setError("Choose who they married.");
+    if (!spouse && !outsider) {
+      setError("Choose who they married, or enter their details.");
       return;
     }
 
@@ -45,7 +65,15 @@ export default function MarriageForm({ person }: { person: Partner }) {
         body: JSON.stringify({
           kind: "ADD_MARRIAGE",
           partnerAId: person.id,
-          partnerBId: spouse.id,
+          partnerBId: spouse?.id ?? undefined,
+          newPartner: outsider
+            ? {
+                firstName: outsider.firstName.trim(),
+                lastName: outsider.lastName.trim(),
+                birthYear: outsider.birthYear ? Number(outsider.birthYear) : null,
+                gender: outsider.gender || null,
+              }
+            : undefined,
           startYear: startYear ? Number(startYear) : null,
           endYear: ended && endYear ? Number(endYear) : null,
           endReason: ended ? endReason : null,
@@ -84,10 +112,37 @@ export default function MarriageForm({ person }: { person: Partner }) {
     );
   }
 
+  const recorded = (
+    <div className="mt-6 space-y-4">
+      {existing.map((marriage) => (
+        <ExistingMarriage key={marriage.id} marriage={marriage} />
+      ))}
+    </div>
+  );
+
+  if (!addingAnother) {
+    return (
+      <>
+        {recorded}
+        <button
+          type="button"
+          onClick={() => setAddingAnother(true)}
+          className="mt-4 min-h-12 w-full rounded-lg border border-dashed border-gray-700 px-4 text-sm text-gray-300"
+        >
+          ＋ Record another marriage
+        </button>
+      </>
+    );
+  }
+
   return (
-    <form onSubmit={handleSubmit} className="mt-6 space-y-6">
+    <>
+      {existing.length > 0 && recorded}
+      <form onSubmit={handleSubmit} className="mt-6 space-y-6">
       <section className="rounded-2xl border border-gray-800 bg-[#161b22] p-4 sm:p-6">
-        <h2 className="text-sm font-semibold text-gray-300">Who did they marry?</h2>
+        <h2 className="text-sm font-semibold text-gray-300">
+          {existing.length > 0 ? "Record another marriage" : "Who did they marry?"}
+        </h2>
 
         {spouse ? (
           <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-gray-700/60 bg-[#0d1117] px-3 py-3">
@@ -100,6 +155,64 @@ export default function MarriageForm({ person }: { person: Partner }) {
             >
               ✕
             </button>
+          </div>
+        ) : outsider ? (
+          <div className="mt-3 space-y-3 rounded-lg border border-gray-700/60 bg-[#0d1117] p-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs uppercase tracking-wide text-gray-500">
+                Marrying into the family
+              </p>
+              <button
+                type="button"
+                onClick={() => setOutsider(null)}
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500"
+                aria-label="Search the register instead"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <input
+                required
+                value={outsider.firstName}
+                onChange={(e) => setOutsider({ ...outsider, firstName: e.target.value })}
+                placeholder="First name *"
+                aria-label="Spouse's first name"
+                className={field}
+              />
+              <input
+                required
+                value={outsider.lastName}
+                onChange={(e) => setOutsider({ ...outsider, lastName: e.target.value })}
+                placeholder="Last name *"
+                aria-label="Spouse's last name"
+                className={field}
+              />
+              <input
+                inputMode="numeric"
+                value={outsider.birthYear}
+                onChange={(e) => setOutsider({ ...outsider, birthYear: e.target.value })}
+                placeholder="Birth year"
+                aria-label="Spouse's birth year"
+                className={field}
+              />
+              <select
+                value={outsider.gender}
+                onChange={(e) =>
+                  setOutsider({
+                    ...outsider,
+                    gender: e.target.value as "MALE" | "FEMALE" | "OTHER" | "",
+                  })
+                }
+                aria-label="Spouse's gender"
+                className={field}
+              >
+                <option value="">Gender not given</option>
+                <option value="MALE">Male</option>
+                <option value="FEMALE">Female</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </div>
           </div>
         ) : (
           <>
@@ -139,10 +252,20 @@ export default function MarriageForm({ person }: { person: Partner }) {
             {search.query.trim().length >= 2 &&
               !search.searching &&
               search.results.length === 0 && (
-                <p className="mt-3 text-xs text-gray-500">
-                  No matches. They need to be added to the register first.
-                </p>
+                <p className="mt-3 text-xs text-gray-500">No matches in the register.</p>
               )}
+
+            {/* Someone marrying in has no relatives here yet, so there is no
+                other way to enter them — the marriage is what connects them. */}
+            <button
+              type="button"
+              onClick={() =>
+                setOutsider({ firstName: "", lastName: "", birthYear: "", gender: "" })
+              }
+              className="mt-3 min-h-11 w-full rounded-lg border border-dashed border-gray-700 px-3 text-sm text-gray-300"
+            >
+              ＋ Not in the register — they married into the family
+            </button>
           </>
         )}
       </section>
@@ -208,6 +331,7 @@ export default function MarriageForm({ person }: { person: Partner }) {
       >
         {submitting ? "Sending…" : "Send for approval"}
       </button>
-    </form>
+      </form>
+    </>
   );
 }

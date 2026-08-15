@@ -66,10 +66,13 @@ export class HangingPersonError extends Error {
 /**
  * Would this person be left connected to nobody?
  *
- * Someone with no link in either direction is not part of a lineage tree —
- * they render as a card stranded beside it. The single exception is the very
- * first person saved into an empty tree, who has nobody to link to yet;
- * their spouse arrives later as the co-parent of their first child.
+ * Someone with no link of any kind is not part of the register — they render
+ * as a card stranded beside the tree. The single exception is the very first
+ * person saved into an empty tree, who has nobody to link to yet.
+ *
+ * `linkCount` counts parent links *and* marriages: someone who married into
+ * the family has no blood tie to anyone here, and refusing them would make a
+ * son-in-law impossible to record until he had a child in the tree.
  *
  * Kept as a pure function so the rule can be tested without a database.
  */
@@ -83,14 +86,20 @@ export async function assertNotHanging(
   client: CycleClient,
   personId: string
 ): Promise<void> {
-  const [linkCount, otherPeopleCount] = await Promise.all([
+  const [parentLinks, marriages, otherPeopleCount] = await Promise.all([
     client.personParent.count({
       where: { OR: [{ childId: personId }, { parentId: personId }] },
+    }),
+    client.marriage.count({
+      where: {
+        deletedAt: null,
+        OR: [{ partnerAId: personId }, { partnerBId: personId }],
+      },
     }),
     client.person.count({ where: { id: { not: personId }, deletedAt: null } }),
   ]);
 
-  if (isHangingPerson(linkCount, otherPeopleCount)) {
+  if (isHangingPerson(parentLinks + marriages, otherPeopleCount)) {
     throw new HangingPersonError();
   }
 }

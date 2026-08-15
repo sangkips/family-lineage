@@ -33,8 +33,17 @@ function emptyNewParent(role: Role): ParentSlot {
   return { mode: "new", firstName: "", lastName: "", birthYear: "", gender: "", role };
 }
 
+type Spouse = { id: string; name: string; gender: "MALE" | "FEMALE" | "OTHER" | null };
+
+function roleFor(gender: string | null | undefined): Role {
+  if (gender === "FEMALE") return "MOTHER";
+  if (gender === "MALE") return "FATHER";
+  return "PARENT";
+}
+
 export default function SubmissionForm({
   initialParent,
+  spouseOptions = [],
 }: {
   /** Pre-selected parent from "Add child under …" on a person's card. */
   initialParent?: {
@@ -42,24 +51,35 @@ export default function SubmissionForm({
     name: string;
     gender?: "MALE" | "FEMALE" | "OTHER" | null;
   } | null;
+  /** That parent's spouses, so the second parent needs no searching. */
+  spouseOptions?: Spouse[];
 }) {
-  const [parents, setParents] = useState<ParentSlot[]>(() =>
-    initialParent
-      ? [
-          {
-            mode: "existing",
-            personId: initialParent.id,
-            name: initialParent.name,
-            role:
-              initialParent.gender === "FEMALE"
-                ? "MOTHER"
-                : initialParent.gender === "MALE"
-                  ? "FATHER"
-                  : "PARENT",
-          },
-        ]
-      : []
-  );
+  const [parents, setParents] = useState<ParentSlot[]>(() => {
+    if (!initialParent) return [];
+
+    const slots: ParentSlot[] = [
+      {
+        mode: "existing",
+        personId: initialParent.id,
+        name: initialParent.name,
+        role: roleFor(initialParent.gender),
+      },
+    ];
+
+    // A child of a married couple belongs to both of them. With exactly one
+    // marriage the spouse is filled in outright; with several, the choice is
+    // left visible rather than guessed.
+    if (spouseOptions.length === 1) {
+      slots.push({
+        mode: "existing",
+        personId: spouseOptions[0].id,
+        name: spouseOptions[0].name,
+        role: roleFor(spouseOptions[0].gender),
+      });
+    }
+
+    return slots;
+  });
 
   // Arriving from "Add child under …" means the parent is already settled, so
   // the picker starts folded away and the form opens on the child's details.
@@ -176,11 +196,51 @@ export default function SubmissionForm({
 
   // The parent is already settled when arriving from someone's card, so it
   // collapses to a line rather than a step to work through.
+  // Several marriages on record: which household is this child from?
+  const chooseSpouse =
+    spouseOptions.length > 1 &&
+    parents.length === 1 &&
+    !parents.some((p) => p.mode === "existing" && p.personId !== initialParent?.id);
+
+  const spousePicker = chooseSpouse ? (
+    <section className="rounded-2xl border border-amber-500/30 bg-[#161b22] p-4">
+      <p className="text-sm font-semibold text-gray-200">Who is the other parent?</p>
+      <p className="mt-1 text-xs text-gray-500">
+        {initialParent?.name} has more than one marriage recorded.
+      </p>
+      <ul className="mt-3 space-y-2">
+        {spouseOptions.map((spouse) => (
+          <li key={spouse.id}>
+            <button
+              type="button"
+              onClick={() =>
+                setParents((prev) => [
+                  ...prev,
+                  {
+                    mode: "existing",
+                    personId: spouse.id,
+                    name: spouse.name,
+                    role: roleFor(spouse.gender),
+                  },
+                ])
+              }
+              className="min-h-12 w-full rounded-lg border border-gray-700 bg-[#0d1117] px-3 text-left text-sm text-gray-200"
+            >
+              {spouse.name}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  ) : null;
+
   const parentSummary = (
     <section className="rounded-2xl border border-gray-800 bg-[#161b22] p-4">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs uppercase tracking-wide text-gray-500">Parent</p>
+          <p className="text-xs uppercase tracking-wide text-gray-500">
+            {parents.length > 1 ? "Parents" : "Parent"}
+          </p>
           <p className="mt-0.5 truncate text-sm text-gray-100">
             {parents
               .map((p) =>
@@ -457,6 +517,7 @@ export default function SubmissionForm({
       ) : (
         <>
           {detailsSection}
+          {spousePicker}
           {parentSummary}
         </>
       )}

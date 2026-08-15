@@ -102,7 +102,10 @@ export type RelationLookup = (targetId: string) => string | null;
 export function createRelationLookup(
   anchorId: string,
   links: readonly ParentLinkDTO[],
-  genderById?: ReadonlyMap<string, Gender | null>
+  genderById?: ReadonlyMap<string, Gender | null>,
+  /** Ids of people married to the anchor — a spouse shares no blood, so they
+   *  are unreachable through parent links and must be supplied. */
+  spouseIds: readonly string[] = []
 ): RelationLookup {
   const parentsByChild = new Map<string, string[]>();
   for (const link of links) {
@@ -112,12 +115,12 @@ export function createRelationLookup(
   }
 
   const anchorAncestors = ancestorDepths(anchorId, parentsByChild);
+  const spouses = new Set(spouseIds);
 
-  return (targetId: string): string | null => {
-    if (targetId === anchorId) return "you";
+  const genderOf = (id: string) => genderById?.get(id) ?? null;
 
-    const genderOf = (id: string) => genderById?.get(id) ?? null;
-
+  /** The blood relationship, ignoring any marriage. */
+  const bloodRelation = (targetId: string): string | null => {
     // The target is one of the anchor's ancestors.
     const upward = anchorAncestors.get(targetId);
     if (upward !== undefined) {
@@ -167,6 +170,18 @@ export function createRelationLookup(
     if (difference === 0) return "relative · same generation";
     return generationsAway(Math.abs(difference), difference > 0 ? "down" : "up");
   };
+
+  return (targetId: string): string | null => {
+    if (targetId === anchorId) return "you";
+
+    const blood = bloodRelation(targetId);
+    if (!spouses.has(targetId)) return blood;
+
+    const spouseTerm = byGender(genderOf(targetId), "husband", "wife", "spouse");
+    // Cousins do marry. The blood tie is what positions them on the tree, so
+    // keep both rather than letting the marriage hide the kinship.
+    return blood ? `${blood} · ${spouseTerm}` : spouseTerm;
+  };
 }
 
 /** Single-pair convenience wrapper — mostly for tests and one-off labels. */
@@ -174,7 +189,8 @@ export function describeRelation(
   anchorId: string,
   targetId: string,
   links: readonly ParentLinkDTO[],
-  genderById?: ReadonlyMap<string, Gender | null>
+  genderById?: ReadonlyMap<string, Gender | null>,
+  spouseIds?: readonly string[]
 ): string | null {
-  return createRelationLookup(anchorId, links, genderById)(targetId);
+  return createRelationLookup(anchorId, links, genderById, spouseIds)(targetId);
 }

@@ -25,7 +25,8 @@ export default function LoginPage() {
       if (error) {
         setError(error.message);
       } else {
-        router.push("/claim");
+        // Accounts exist only to moderate, so the queue is where sign-in leads.
+        router.push("/admin");
         router.refresh();
       }
     } finally {
@@ -36,9 +37,10 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-dvh items-center justify-center bg-[#0d1117] px-4 text-gray-100">
       <div className="w-full max-w-sm rounded-2xl border border-gray-800 bg-[#161b22] p-5 shadow-xl sm:p-8">
-        <h1 className="text-xl font-bold">Welcome back</h1>
+        <h1 className="text-xl font-bold">Admin sign-in</h1>
         <p className="mt-1 text-sm text-gray-400">
-          Sign in to claim your place in the family tree.
+          For tree admins reviewing submissions. To add yourself or a relative,
+          go back to the tree and tap Add — no account needed.
         </p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">

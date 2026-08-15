@@ -1,4 +1,4 @@
-import type { ParentLinkDTO, PersonDTO } from "./tree";
+import type { MarriageDTO, ParentLinkDTO, PersonDTO } from "./tree";
 
 // ---- Output types ----
 
@@ -16,9 +16,20 @@ export type TreeEdge = {
   target: string;
 };
 
+/** Two people drawn side by side, and whether that pairing is a record. */
+export type CoupleEdge = {
+  id: string;
+  aId: string;
+  bId: string;
+  /** True when a marriage was recorded; false when inferred from a shared child. */
+  recorded: boolean;
+  marriageId: string | null;
+};
+
 export type LayoutResult = {
   nodes: TreeNode[];
   edges: TreeEdge[];
+  couples: CoupleEdge[];
   maxGeneration: number;
 };
 
@@ -77,7 +88,10 @@ type Unit = {
 export function layoutTree(
   people: PersonDTO[],
   links: ParentLinkDTO[],
-  metrics: LayoutMetrics = DEFAULT_METRICS
+  metrics: LayoutMetrics = DEFAULT_METRICS,
+  /** Recorded marriages. Couples also pair by sharing a child, but a recorded
+   *  marriage pairs people who have no children together. */
+  marriages: readonly MarriageDTO[] = []
 ): LayoutResult {
   const byId = new Map(people.map((p) => [p.id, p]));
 
@@ -88,11 +102,18 @@ export function layoutTree(
     push(childrenByParent, l.parentId, l.childId);
   }
 
-  // Spouses = people who co-parent at least one child.
+  // Partners: a recorded marriage, or — as a fallback for couples nobody has
+  // recorded yet — two people who share a child.
   const spouseOf = new Map<string, string[]>();
+  for (const marriage of marriages) {
+    if (!byId.has(marriage.partnerAId) || !byId.has(marriage.partnerBId)) continue;
+    push(spouseOf, marriage.partnerAId, marriage.partnerBId);
+    push(spouseOf, marriage.partnerBId, marriage.partnerAId);
+  }
   for (const parents of parentsByChild.values()) {
     for (let i = 0; i < parents.length; i++) {
       for (let j = i + 1; j < parents.length; j++) {
+        if (spouseOf.get(parents[i])?.includes(parents[j])) continue;
         push(spouseOf, parents[i], parents[j]);
         push(spouseOf, parents[j], parents[i]);
       }
@@ -128,9 +149,14 @@ export function layoutTree(
 
   // ---- 2. Couple units (union-find over spouse links) ----
   const parent = new Map<string, string>();
+  // Must return the *representative* of the set, not the immediate parent:
+  // union links whatever find returns, so returning a non-root can point two
+  // entries at each other and make the next find recurse forever.
   const find = (x: string): string => {
-    const root = parent.get(x) ?? x;
-    if (root !== x) parent.set(x, find(root));
+    const step = parent.get(x) ?? x;
+    if (step === x) return x;
+    const root = find(step);
+    parent.set(x, root); // path compression
     return root;
   };
   const union = (a: string, b: string) => {
@@ -251,11 +277,40 @@ export function layoutTree(
     edges.push({ id, source: l.parentId, target: l.childId });
   }
 
+  // Couple connectors between neighbouring members of the same unit.
+  const marriageByPair = new Map<string, MarriageDTO>();
+  for (const marriage of marriages) {
+    marriageByPair.set(pairKey(marriage.partnerAId, marriage.partnerBId), marriage);
+  }
+
+  const couples: CoupleEdge[] = [];
+  for (const u of units) {
+    for (let i = 0; i + 1 < u.members.length; i++) {
+      const aId = u.members[i].id;
+      const bId = u.members[i + 1].id;
+      if (!nodeIds.has(aId) || !nodeIds.has(bId)) continue;
+      const marriage = marriageByPair.get(pairKey(aId, bId));
+      couples.push({
+        id: `couple:${aId}:${bId}`,
+        aId,
+        bId,
+        recorded: Boolean(marriage),
+        marriageId: marriage?.id ?? null,
+      });
+    }
+  }
+
   return {
     nodes,
     edges,
+    couples,
     maxGeneration: Math.max(0, ...units.map((u) => u.generation)),
   };
+}
+
+/** Order-independent key for a pair of people. */
+function pairKey(a: string, b: string): string {
+  return a < b ? `${a}|${b}` : `${b}|${a}`;
 }
 
 function push(map: Map<string, string[]>, key: string, value: string) {

@@ -63,11 +63,17 @@ type PersonInput = {
 };
 
 type SubmissionBody = {
-  kind?: "ADD_PEOPLE" | "EDIT_PERSON";
+  kind?: "ADD_PEOPLE" | "EDIT_PERSON" | "ADD_MARRIAGE";
   person?: PersonInput;
   parents?: ParentInput[];
   personId?: string;
   changes?: PersonInput & { deathDate?: string | null; isLiving?: boolean };
+  /** ADD_MARRIAGE */
+  partnerAId?: string;
+  partnerBId?: string;
+  startYear?: number | null;
+  endYear?: number | null;
+  endReason?: string | null;
 };
 
 class BadRequest extends Error {}
@@ -126,6 +132,9 @@ export async function POST(request: NextRequest) {
     const hash = submitterHash(request);
     if (body.kind === "EDIT_PERSON") {
       return await submitCorrection(body, hash, request);
+    }
+    if (body.kind === "ADD_MARRIAGE") {
+      return await submitMarriage(body, hash, request);
     }
     return await submitPeople(body, hash, request);
   } catch (error) {
@@ -295,6 +304,102 @@ async function submitPeople(
 
   // Deliberately bare: pending work is invisible to everyone but the admin,
   // so there is no id, receipt or status page to hand back.
+  return NextResponse.json({ ok: true, submissionId }, { status: 201 });
+}
+
+// ---- ADD_MARRIAGE ----
+
+/** A year on its own, as 1 January, used for wedding and end dates. */
+function yearToDate(value: number | null | undefined, field: string): Date | null {
+  if (value === undefined || value === null || (value as unknown) === "") return null;
+  const year = Number(value);
+  const thisYear = new Date().getUTCFullYear();
+  if (!Number.isInteger(year) || year < 1000 || year > thisYear) {
+    throw new BadRequest(`${field} must be a four-digit year in the past`);
+  }
+  return new Date(Date.UTC(year, 0, 1));
+}
+
+async function submitMarriage(
+  body: SubmissionBody,
+  hash: string | null,
+  request: NextRequest
+) {
+  const { partnerAId, partnerBId } = body;
+  if (!partnerAId || !partnerBId) {
+    throw new BadRequest("Both partners are required");
+  }
+  if (partnerAId === partnerBId) {
+    throw new BadRequest("A person cannot be married to themselves");
+  }
+
+  const partners = await prisma.person.findMany({
+    where: {
+      id: { in: [partnerAId, partnerBId] },
+      status: PersonStatus.APPROVED,
+      deletedAt: null,
+    },
+    select: { id: true, firstName: true, lastName: true },
+  });
+  if (partners.length !== 2) {
+    throw new BadRequest("Both partners must already be in the register");
+  }
+
+  // Sorted so the pair is unique however it was entered.
+  const [aId, bId] = [partnerAId, partnerBId].sort();
+
+  const existing = await prisma.marriage.findUnique({
+    where: { partnerAId_partnerBId: { partnerAId: aId, partnerBId: bId } },
+  });
+  if (existing && !existing.deletedAt) {
+    throw new BadRequest("This marriage is already recorded or awaiting review");
+  }
+
+  const startDate = yearToDate(body.startYear, "Wedding year");
+  const endDate = yearToDate(body.endYear, "Year it ended");
+  if (startDate && endDate && endDate < startDate) {
+    throw new BadRequest("A marriage cannot end before it began");
+  }
+
+  const endReason =
+    body.endReason === "DIVORCE" || body.endReason === "DEATH" ? body.endReason : null;
+  if (endDate && !endReason) {
+    throw new BadRequest("Say whether it ended by divorce or by death");
+  }
+
+  const submissionId = await prisma.$transaction(async (tx) => {
+    const submission = await tx.submission.create({
+      data: { kind: "ADD_MARRIAGE", submitterHash: hash },
+    });
+    const marriage = await tx.marriage.create({
+      data: {
+        partnerAId: aId,
+        partnerBId: bId,
+        startDate,
+        startPrecision: DatePrecision.YEAR,
+        endDate,
+        endReason,
+        status: PersonStatus.PENDING,
+      },
+    });
+    await tx.pendingEdit.create({
+      data: {
+        marriageId: marriage.id,
+        requestType: "ADD_MARRIAGE",
+        submissionId: submission.id,
+      },
+    });
+    return submission.id;
+  });
+
+  const names = partners.map((p) => `${p.firstName} ${p.lastName}`).join(" & ");
+  void notifyAdminsOfPending({
+    personName: names,
+    requestType: "ADD_MARRIAGE",
+    submittedBy: null,
+    adminUrl: new URL("/admin", request.url).toString(),
+  });
+
   return NextResponse.json({ ok: true, submissionId }, { status: 201 });
 }
 

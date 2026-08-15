@@ -1,6 +1,12 @@
 import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient, Gender, ParentRole, PersonStatus } from "../src/generated/prisma/client";
+import {
+  PrismaClient,
+  DatePrecision,
+  Gender,
+  ParentRole,
+  PersonStatus,
+} from "../src/generated/prisma/client";
 
 // Demo data: a 7-generation family (gen 0 = great-great-grandparents down to
 // gen 6 = great-grandchildren). Exercises the edge cases from PLAN.md:
@@ -45,10 +51,36 @@ async function link(childKey: string, parentKey: string, role: ParentRole) {
   });
 }
 
+/**
+ * Record a marriage. Partner ids are stored sorted, matching the unique
+ * constraint, so the same couple cannot be entered twice in either order.
+ */
+async function marry(
+  aKey: string,
+  bKey: string,
+  startYear: number,
+  end?: { year: number; reason: "DEATH" | "DIVORCE" }
+) {
+  const [partnerAId, partnerBId] = [people[aKey], people[bKey]].sort();
+  await prisma.marriage.create({
+    data: {
+      partnerAId,
+      partnerBId,
+      startDate: new Date(Date.UTC(startYear, 0, 1)),
+      startPrecision: DatePrecision.YEAR,
+      endDate: end ? new Date(Date.UTC(end.year, 0, 1)) : null,
+      endReason: end?.reason ?? null,
+      status: PersonStatus.APPROVED,
+    },
+  });
+}
+
 async function main() {
   console.log("Clearing existing data…");
   await prisma.pendingEdit.deleteMany();
+  await prisma.submission.deleteMany();
   await prisma.profile.deleteMany();
+  await prisma.marriage.deleteMany();
   await prisma.personParent.deleteMany();
   await prisma.person.deleteMany();
 
@@ -115,7 +147,7 @@ async function main() {
   await add("michael", {
     firstName: "Michael", lastName: "Anderson", gender: Gender.MALE,
     birthDate: new Date("1995-04-22"), birthPlace: "Chicago, IL", isLiving: true,
-    bio: "The demo 'me' node — claim this person with your account to test the self-insert flow.",
+    bio: "A good person to anchor the tree on — has parents, a spouse and children in every direction.",
   });
   await add("jessica", {
     firstName: "Jessica", lastName: "Anderson", gender: Gender.FEMALE,
@@ -169,10 +201,25 @@ async function main() {
   await link("mia", "hannah", ParentRole.MOTHER);
   await link("noah", "ethan", ParentRole.FATHER); // unknown mother — single-parent node
 
-  console.log("✅ Seeded 18 people across 7 generations.");
-  console.log("Great-great-grandparents: Joseph & Maria Anderson");
+  // ---- Marriages ----
+  // Recorded explicitly rather than guessed from shared children, so a couple
+  // is a fact in the register. Esther, Paul and Ethan stay unmarried: their
+  // partners are genuinely unknown.
+  await marry("joseph", "maria", 1912, { year: 1975, reason: "DEATH" });
+  await marry("david", "rachel", 1938, { year: 1990, reason: "DEATH" });
+  await marry("samuel", "grace", 1965, { year: 2010, reason: "DEATH" });
+  await marry("daniel", "sarah", 1993);
+  await marry("michael", "hannah", 2018);
+
+  const [peopleCount, marriageCount] = await Promise.all([
+    prisma.person.count(),
+    prisma.marriage.count(),
+  ]);
+  console.log(
+    `✅ Seeded ${peopleCount} people and ${marriageCount} marriages across 7 generations.`
+  );
+  console.log("Great-great-grandparents: Joseph & Maria Anderson (married 1912)");
   console.log("Gen 6 (great-grandchildren): Noah Anderson");
-  console.log("To claim an account, bind your Supabase user to 'michael' (see Profile model).");
 }
 
 main()

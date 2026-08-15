@@ -14,13 +14,28 @@ export async function GET(request: NextRequest) {
   if (!auth.ok) return auth.response;
 
   const submissions = await prisma.submission.findMany({
-    where: { decision: null },
+    where: {
+      decision: null,
+      // Skip submissions left with nothing to review after their people were
+      // deleted from the database (the PendingEdit rows cascade away).
+      edits: { some: {} },
+    },
     include: {
       edits: {
         include: {
           person: {
             include: {
-              parents: { include: { parent: { select: { id: true, firstName: true, lastName: true } } } },
+              parents: {
+                include: {
+                  parent: { select: { id: true, firstName: true, lastName: true } },
+                },
+              },
+            },
+          },
+          marriage: {
+            include: {
+              partnerA: { select: { id: true, firstName: true, lastName: true } },
+              partnerB: { select: { id: true, firstName: true, lastName: true } },
             },
           },
         },
@@ -59,22 +74,34 @@ export async function GET(request: NextRequest) {
         id: edit.id,
         requestType: edit.requestType,
         payload: edit.payload,
-        person: {
-          id: edit.person.id,
-          firstName: edit.person.firstName,
-          lastName: edit.person.lastName,
-          maidenName: edit.person.maidenName,
-          gender: edit.person.gender,
-          birthDate: edit.person.birthDate?.toISOString() ?? null,
-          birthDatePrecision: edit.person.birthDatePrecision,
-          birthPlace: edit.person.birthPlace,
-          bio: edit.person.bio,
-          isLiving: edit.person.isLiving,
-          hideBirthDate: edit.person.hideBirthDate,
-          hideFullName: edit.person.hideFullName,
-          status: edit.person.status,
-        },
-        parents: edit.person.parents.map((link) => ({
+        person: edit.person
+          ? {
+              id: edit.person.id,
+              firstName: edit.person.firstName,
+              lastName: edit.person.lastName,
+              maidenName: edit.person.maidenName,
+              gender: edit.person.gender,
+              birthDate: edit.person.birthDate?.toISOString() ?? null,
+              birthDatePrecision: edit.person.birthDatePrecision,
+              birthPlace: edit.person.birthPlace,
+              bio: edit.person.bio,
+              isLiving: edit.person.isLiving,
+              hideBirthDate: edit.person.hideBirthDate,
+              hideFullName: edit.person.hideFullName,
+              status: edit.person.status,
+            }
+          : null,
+        marriage: edit.marriage
+          ? {
+              id: edit.marriage.id,
+              partnerA: `${edit.marriage.partnerA.firstName} ${edit.marriage.partnerA.lastName}`,
+              partnerB: `${edit.marriage.partnerB.firstName} ${edit.marriage.partnerB.lastName}`,
+              startDate: edit.marriage.startDate?.toISOString() ?? null,
+              endDate: edit.marriage.endDate?.toISOString() ?? null,
+              endReason: edit.marriage.endReason,
+            }
+          : null,
+        parents: (edit.person?.parents ?? []).map((link) => ({
           id: link.parent.id,
           name: `${link.parent.firstName} ${link.parent.lastName}`,
           role: link.role,

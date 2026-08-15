@@ -139,9 +139,19 @@ function TreeCanvasInner({ data }: { data: TreeData }) {
 
   // Built from the full link set, not the visible subset, so a label stays
   // correct even when the connecting branch is collapsed away.
+  const spousesOfAnchor = useMemo(() => {
+    if (!anchorId) return [];
+    return data.marriages
+      .filter((m) => m.partnerAId === anchorId || m.partnerBId === anchorId)
+      .map((m) => (m.partnerAId === anchorId ? m.partnerBId : m.partnerAId));
+  }, [anchorId, data.marriages]);
+
   const relationTo = useMemo(
-    () => (anchorId ? createRelationLookup(anchorId, data.links, genderById) : null),
-    [anchorId, data.links, genderById]
+    () =>
+      anchorId
+        ? createRelationLookup(anchorId, data.links, genderById, spousesOfAnchor)
+        : null,
+    [anchorId, data.links, genderById, spousesOfAnchor]
   );
 
   /**
@@ -280,8 +290,8 @@ function TreeCanvasInner({ data }: { data: TreeData }) {
   );
   const metrics = isCompact ? COMPACT_METRICS : DEFAULT_METRICS;
   const layout = useMemo(
-    () => layoutTree(visible.people, layoutLinks, metrics),
-    [visible.people, layoutLinks, metrics]
+    () => layoutTree(visible.people, layoutLinks, metrics, data.marriages),
+    [visible.people, layoutLinks, metrics, data.marriages]
   );
 
   const peopleById = useMemo(
@@ -325,8 +335,8 @@ function TreeCanvasInner({ data }: { data: TreeData }) {
   );
 
   const edges = useMemo<Edge[]>(
-    () =>
-      layout.edges.map((e) => ({
+    () => [
+      ...layout.edges.map((e) => ({
         id: e.id,
         source: e.source,
         target: e.target,
@@ -334,6 +344,21 @@ function TreeCanvasInner({ data }: { data: TreeData }) {
         style: { stroke: "#3f4b5e", strokeWidth: 1.5 },
         interactionWidth: 24,
       })),
+      // Spouse connectors: solid where a marriage was recorded, faint and
+      // dashed where the pairing is only inferred from a shared child.
+      ...layout.couples.map((couple) => ({
+        id: couple.id,
+        source: couple.aId,
+        target: couple.bId,
+        sourceHandle: "spouse-right",
+        targetHandle: "spouse-left",
+        type: "straight",
+        style: couple.recorded
+          ? { stroke: "#e5a3c4", strokeWidth: 2 }
+          : { stroke: "#4b5563", strokeWidth: 1.5, strokeDasharray: "4 4" },
+        interactionWidth: 20,
+      })),
+    ],
     [layout]
   );
 
@@ -352,6 +377,45 @@ function TreeCanvasInner({ data }: { data: TreeData }) {
         .filter((l) => l.parentId === selected.id)
         .map((l) => peopleById.get(l.childId))
         .filter((p): p is NonNullable<typeof p> => Boolean(p))
+    : [];
+
+  // Anyone sharing at least one parent. Half-siblings count — they are family,
+  // and a register that hid them would be telling half the story.
+  const selectedSiblings = useMemo(() => {
+    if (!selected) return [];
+    const parentIds = new Set(
+      data.links.filter((l) => l.childId === selected.id).map((l) => l.parentId)
+    );
+    if (parentIds.size === 0) return [];
+
+    const siblingIds = new Set(
+      data.links
+        .filter((l) => parentIds.has(l.parentId) && l.childId !== selected.id)
+        .map((l) => l.childId)
+    );
+    return [...siblingIds]
+      .map((id) => peopleById.get(id))
+      .filter((p): p is NonNullable<typeof p> => Boolean(p))
+      .sort((a, b) => (a.birthDate ?? "").localeCompare(b.birthDate ?? ""));
+  }, [selected, data.links, peopleById]);
+
+  const selectedMarriages = selected
+    ? data.marriages
+        .filter((m) => m.partnerAId === selected.id || m.partnerBId === selected.id)
+        .map((m) => {
+          const spouseId = m.partnerAId === selected.id ? m.partnerBId : m.partnerAId;
+          const spouse = peopleById.get(spouseId);
+          return spouse
+            ? {
+                id: m.id,
+                spouse,
+                startYear: m.startDate ? new Date(m.startDate).getUTCFullYear() : null,
+                endYear: m.endDate ? new Date(m.endDate).getUTCFullYear() : null,
+                endReason: m.endReason,
+              }
+            : null;
+        })
+        .filter((m): m is NonNullable<typeof m> => Boolean(m))
     : [];
 
   const hasCollapsed = collapsedIds.size > 0;
@@ -497,7 +561,9 @@ function TreeCanvasInner({ data }: { data: TreeData }) {
         <PersonDrawer
           person={selected}
           parents={selectedParents}
+          siblings={selectedSiblings}
           childPeople={selectedChildren}
+          marriages={selectedMarriages}
           relation={relationTo?.(selected.id) ?? null}
           onClose={() => setSelectedId(null)}
         />

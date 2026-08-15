@@ -1,4 +1,5 @@
 import { Prisma, UserRole } from "@/generated/prisma/client";
+import { withDbRetry } from "./db-retry";
 import { prisma } from "./prisma";
 import { getOrCreateProfile, type AuthUser } from "./profile";
 
@@ -33,9 +34,22 @@ export type ParentLinkDTO = {
   role: ParentRole;
 };
 
+export type MarriageDTO = {
+  id: string;
+  partnerAId: string;
+  partnerBId: string;
+  startDate: string | null;
+  startPrecision: DatePrecision;
+  endDate: string | null;
+  endReason: string | null;
+};
+
 export type TreeData = {
   people: PersonDTO[];
   links: ParentLinkDTO[];
+  /** Recorded marriages. Couples not listed here may still be paired by the
+   *  layout from sharing a child — that pairing is a guess, this is a record. */
+  marriages: MarriageDTO[];
 };
 
 // ---- Row shapes returned by the raw queries ----
@@ -96,18 +110,22 @@ export async function getTree(
   options: { rootId?: string; depth?: number; viewer?: TreeViewer } = {}
 ): Promise<TreeData> {
   const maxDepth = options.depth ?? 100;
+  const isAdminViewer = options.viewer?.isAdmin === true;
   const rootCondition = options.rootId
     ? Prisma.sql`p."id" = ${options.rootId}`
     : Prisma.sql`NOT EXISTS (SELECT 1 FROM "PersonParent" pp WHERE pp."childId" = p."id")`;
 
-  const pendingClause = options.viewer?.isAdmin ? Prisma.sql`TRUE` : Prisma.sql`FALSE`;
+  const pendingClause = isAdminViewer ? Prisma.sql`TRUE` : Prisma.sql`FALSE`;
 
   const visible = Prisma.sql`(
     p."status" = 'APPROVED'
     OR (p."status" = 'PENDING' AND ${pendingClause})
   ) AND p."deletedAt" IS NULL`;
 
-  const peopleRows = await prisma.$queryRaw<PersonRow[]>(Prisma.sql`
+  // Retried once on a transient network failure: mobile connections drop and
+  // DNS occasionally stalls, and neither should take the whole tree down.
+  const peopleRows = await withDbRetry(() =>
+    prisma.$queryRaw<PersonRow[]>(Prisma.sql`
     WITH RECURSIVE subtree AS (
       SELECT p.*, 0 AS depth
       FROM "Person" p
@@ -124,22 +142,48 @@ export async function getTree(
     SELECT DISTINCT ON (subtree."id") ${Prisma.raw(PERSON_COLUMNS)}
     FROM subtree
     ORDER BY subtree."id", subtree.depth DESC
-  `);
+  `)
+  );
 
   const ids = peopleRows.map((p) => p.id);
   let links: ParentLinkDTO[] = [];
+  let marriages: MarriageDTO[] = [];
   if (ids.length > 0) {
-    const linkRows = await prisma.$queryRaw<LinkRow[]>(Prisma.sql`
-      SELECT "childId", "parentId", "role"
-      FROM "PersonParent"
-      WHERE "parentId" = ANY(${ids}) AND "childId" = ANY(${ids})
-    `);
+    // Both depend only on the person ids, so they go out together — the
+    // database is a long way away and each sequential round trip is felt.
+    const [linkRows, marriageRows] = await withDbRetry(() =>
+      Promise.all([
+        prisma.$queryRaw<LinkRow[]>(Prisma.sql`
+          SELECT "childId", "parentId", "role"
+          FROM "PersonParent"
+          WHERE "parentId" = ANY(${ids}) AND "childId" = ANY(${ids})
+        `),
+        prisma.marriage.findMany({
+          where: {
+            deletedAt: null,
+            partnerAId: { in: ids },
+            partnerBId: { in: ids },
+            // Pending marriages, like pending people, are for the admin's eyes.
+            ...(isAdminViewer ? {} : { status: "APPROVED" }),
+          },
+        }),
+      ])
+    );
     links = linkRows;
+    marriages = marriageRows.map((m) => ({
+      id: m.id,
+      partnerAId: m.partnerAId,
+      partnerBId: m.partnerBId,
+      startDate: m.startDate?.toISOString() ?? null,
+      startPrecision: m.startPrecision,
+      endDate: m.endDate?.toISOString() ?? null,
+      endReason: m.endReason,
+    }));
   }
 
   // Privacy: living members who opt out of sharing birth details or their
   // full name are redacted for everyone except admins and themselves.
-  const isAdmin = options.viewer?.isAdmin === true;
+  const isAdmin = isAdminViewer;
   const people: PersonDTO[] = peopleRows.map((p) => {
     // Privacy toggles only apply while the person is living — deceased
     // relatives' records are historical and always public.
@@ -163,5 +207,5 @@ export async function getTree(
     };
   });
 
-  return { people, links };
+  return { people, links, marriages };
 }

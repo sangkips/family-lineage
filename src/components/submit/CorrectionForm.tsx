@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useToast } from "@/components/ui/Toast";
 
 type Correctable = {
   id: string;
@@ -26,6 +27,7 @@ const label = "mb-1 block text-sm text-gray-300";
  */
 export default function CorrectionForm({ person }: { person: Correctable }) {
   const [values, setValues] = useState<Correctable>(person);
+  const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -67,11 +69,13 @@ export default function CorrectionForm({ person }: { person: Correctable }) {
       const body = await res.json();
       if (!res.ok) {
         setError(body.error ?? "Something went wrong");
+        toast(body.error ?? "Something went wrong", "error");
         return;
       }
       setDone(true);
     } catch {
       setError("Network error — please try again");
+      toast("Network error — nothing was sent", "error");
     } finally {
       setSubmitting(false);
     }

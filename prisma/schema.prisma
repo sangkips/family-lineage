@@ -74,6 +74,9 @@ model Person {
   profile  Profile?
   edits    PendingEdit[]
 
+  marriagesAsA Marriage[] @relation("marriagePartnerA")
+  marriagesAsB Marriage[] @relation("marriagePartnerB")
+
   @@index([lastName, firstName])
   @@index([status])
 }
@@ -93,6 +96,43 @@ model PersonParent {
   @@unique([childId, parentId])
   @@index([parentId])
   @@index([childId])
+}
+
+/// A marriage between two people.
+///
+/// Until now a couple was only ever *inferred* from sharing a child, which
+/// cannot represent a childless marriage, cannot say when it happened, and
+/// cannot tell a marriage apart from co-parenting. A person may appear in
+/// several marriages — remarriage after a death or divorce, and concurrent
+/// marriages both fit.
+///
+/// The two partner ids are stored in sorted order so the unique constraint
+/// catches a duplicate however the pair was entered.
+model Marriage {
+  id         String @id @default(cuid())
+  partnerAId String
+  partnerBId String
+
+  startDate      DateTime?
+  startPrecision DatePrecision @default(YEAR)
+  endDate        DateTime?
+  /// DIVORCE | DEATH — why it ended, when it has.
+  endReason      String?
+
+  /// Marriages go through the same review as everyone else.
+  status    PersonStatus @default(PENDING)
+  deletedAt DateTime?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  partnerA Person        @relation("marriagePartnerA", fields: [partnerAId], references: [id], onDelete: Cascade)
+  partnerB Person        @relation("marriagePartnerB", fields: [partnerBId], references: [id], onDelete: Cascade)
+  edits    PendingEdit[]
+
+  @@unique([partnerAId, partnerBId])
+  @@index([partnerAId])
+  @@index([partnerBId])
+  @@index([status])
 }
 
 /// Links a Supabase Auth account to the Person node that represents them.
@@ -139,9 +179,12 @@ model Submission {
 
 /// One person, or one proposed edit, inside a submission.
 model PendingEdit {
-  id           String  @id @default(cuid())
-  personId     String
-  requestType  String // ADD_PERSON | EDIT_PERSON
+  id String @id @default(cuid())
+  /// Exactly one of personId / marriageId is set: a submission carries either
+  /// a person or a marriage.
+  personId     String?
+  marriageId   String?
+  requestType  String // ADD_PERSON | EDIT_PERSON | ADD_MARRIAGE
   submissionId String?
 
   /// Proposed field values for an EDIT_PERSON request. A correction must not
@@ -159,9 +202,11 @@ model PendingEdit {
 
   submittedAt DateTime @default(now())
 
-  person     Person      @relation(fields: [personId], references: [id], onDelete: Cascade)
+  person     Person?     @relation(fields: [personId], references: [id], onDelete: Cascade)
+  marriage   Marriage?   @relation(fields: [marriageId], references: [id], onDelete: Cascade)
   submission Submission? @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 
   @@index([submittedAt])
   @@index([submissionId])
+  @@index([marriageId])
 }

@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useToast } from "@/components/ui/Toast";
 import {
   usePersonSearch,
   type PersonSearchResult,
@@ -36,7 +37,11 @@ export default function SubmissionForm({
   initialParent,
 }: {
   /** Pre-selected parent from "Add child under …" on a person's card. */
-  initialParent?: { id: string; name: string } | null;
+  initialParent?: {
+    id: string;
+    name: string;
+    gender?: "MALE" | "FEMALE" | "OTHER" | null;
+  } | null;
 }) {
   const [parents, setParents] = useState<ParentSlot[]>(() =>
     initialParent
@@ -45,11 +50,20 @@ export default function SubmissionForm({
             mode: "existing",
             personId: initialParent.id,
             name: initialParent.name,
-            role: "PARENT",
+            role:
+              initialParent.gender === "FEMALE"
+                ? "MOTHER"
+                : initialParent.gender === "MALE"
+                  ? "FATHER"
+                  : "PARENT",
           },
         ]
       : []
   );
+
+  // Arriving from "Add child under …" means the parent is already settled, so
+  // the picker starts folded away and the form opens on the child's details.
+  const [showParents, setShowParents] = useState(!initialParent);
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -60,6 +74,7 @@ export default function SubmissionForm({
   const [useExactDate, setUseExactDate] = useState(false);
   const [birthPlace, setBirthPlace] = useState("");
 
+  const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -128,11 +143,13 @@ export default function SubmissionForm({
       const body = await res.json();
       if (!res.ok) {
         setError(body.error ?? "Something went wrong");
+        toast(body.error ?? "Something went wrong", "error");
         return;
       }
       setDone(true);
     } catch {
       setError("Network error — please try again");
+      toast("Network error — nothing was sent", "error");
     } finally {
       setSubmitting(false);
     }
@@ -157,14 +174,40 @@ export default function SubmissionForm({
     );
   }
 
-  return (
-    <form onSubmit={handleSubmit} className="mt-6 space-y-6">
-      {/* ---- Step 1: who are the parents ---- */}
-      <section className="rounded-2xl border border-gray-800 bg-[#161b22] p-4 sm:p-6">
-        <h2 className="text-sm font-semibold text-gray-300">1 · Who are the parents?</h2>
-        <p className="mt-1 text-xs text-gray-500">
-          Search the register, or enter a parent by hand if they are not in it yet.
-        </p>
+  // The parent is already settled when arriving from someone's card, so it
+  // collapses to a line rather than a step to work through.
+  const parentSummary = (
+    <section className="rounded-2xl border border-gray-800 bg-[#161b22] p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs uppercase tracking-wide text-gray-500">Parent</p>
+          <p className="mt-0.5 truncate text-sm text-gray-100">
+            {parents
+              .map((p) =>
+                p.mode === "existing"
+                  ? `${p.name} (${p.role.toLowerCase()})`
+                  : `${p.firstName} ${p.lastName}`.trim() || "new parent"
+              )
+              .join(" and ")}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowParents(true)}
+          className="min-h-11 shrink-0 rounded-lg border border-gray-700 px-3 text-xs text-gray-300"
+        >
+          Change
+        </button>
+      </div>
+    </section>
+  );
+
+  const parentsPicker = (
+    <section className="rounded-2xl border border-gray-800 bg-[#161b22] p-4 sm:p-6">
+      <h2 className="text-sm font-semibold text-gray-300">Who are the parents?</h2>
+      <p className="mt-1 text-xs text-gray-500">
+        Search the register, or enter a parent by hand if they are not in it yet.
+      </p>
 
         {parents.length < MAX_PARENTS && (
           <>
@@ -289,11 +332,12 @@ export default function SubmissionForm({
             </li>
           ))}
         </ul>
-      </section>
+    </section>
+  );
 
-      {/* ---- Step 2: the person ---- */}
-      <section className="rounded-2xl border border-gray-800 bg-[#161b22] p-4 sm:p-6">
-        <h2 className="text-sm font-semibold text-gray-300">2 · Their details</h2>
+  const detailsSection = (
+    <section className="rounded-2xl border border-gray-800 bg-[#161b22] p-4 sm:p-6">
+      <h2 className="text-sm font-semibold text-gray-300">Their details</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="firstName" className={label}>
@@ -398,7 +442,24 @@ export default function SubmissionForm({
             />
           </div>
         </div>
-      </section>
+    </section>
+  );
+
+  return (
+    <form onSubmit={handleSubmit} className="mt-6 space-y-6">
+      {/* With the parent already known, the child's details come first and the
+          parent sits underneath as a line that can still be changed. */}
+      {showParents ? (
+        <>
+          {parentsPicker}
+          {detailsSection}
+        </>
+      ) : (
+        <>
+          {detailsSection}
+          {parentSummary}
+        </>
+      )}
 
       {error && (
         <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2.5 text-sm text-red-300">

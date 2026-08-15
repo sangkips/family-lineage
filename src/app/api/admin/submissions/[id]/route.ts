@@ -117,20 +117,41 @@ export async function POST(
       );
 
       if (body.action === "reject") {
-        // Proposed corrections simply evaporate; proposed people are soft
-        // deleted so the audit trail survives.
+        // Proposed corrections simply evaporate; proposed people and marriages
+        // are soft deleted so the audit trail survives.
         const personIds = submission.edits
           .filter((edit) => edit.requestType === "ADD_PERSON")
-          .map((edit) => edit.personId);
+          .map((edit) => edit.personId)
+          .filter((id): id is string => Boolean(id));
         if (personIds.length > 0) {
           await tx.person.updateMany({
             where: { id: { in: personIds } },
             data: { status: PersonStatus.REJECTED, deletedAt: new Date() },
           });
         }
+
+        const marriageIds = submission.edits
+          .map((edit) => edit.marriageId)
+          .filter((id): id is string => Boolean(id));
+        if (marriageIds.length > 0) {
+          await tx.marriage.updateMany({
+            where: { id: { in: marriageIds } },
+            data: { status: PersonStatus.REJECTED, deletedAt: new Date() },
+          });
+        }
       } else {
         for (const edit of submission.edits) {
           const decision = decisions.get(edit.id);
+
+          if (edit.requestType === "ADD_MARRIAGE" && edit.marriageId) {
+            await tx.marriage.update({
+              where: { id: edit.marriageId },
+              data: { status: PersonStatus.APPROVED, deletedAt: null },
+            });
+            continue;
+          }
+
+          if (!edit.personId) continue;
 
           if (edit.requestType === "EDIT_PERSON") {
             // The admin's edits win over the suggested ones.

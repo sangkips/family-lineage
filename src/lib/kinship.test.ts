@@ -114,7 +114,28 @@ describe("createRelationLookup", () => {
   });
 
   it("returns null for someone related only by marriage", () => {
+    // No blood tie and no marriage recorded to the anchor.
     expect(relationTo("auntHusband")).toBeNull();
+  });
+
+  it("names a spouse once the marriage is recorded", () => {
+    const married = createRelationLookup("aunt", LINKS, GENDERS, ["auntHusband"]);
+    expect(married("auntHusband")).toBe("husband");
+
+    const fromHusband = createRelationLookup("auntHusband", LINKS, GENDERS, ["aunt"]);
+    expect(fromHusband("aunt")).toBe("wife");
+  });
+
+  it("falls back to a neutral spouse term without gender", () => {
+    const married = createRelationLookup("aunt", LINKS, undefined, ["auntHusband"]);
+    expect(married("auntHusband")).toBe("spouse");
+  });
+
+  it("keeps the blood tie when a relative is also a spouse", () => {
+    // Cousins do marry. The blood tie is what positions them on the tree, so
+    // it must not be replaced by the marriage.
+    const married = createRelationLookup("me", LINKS, GENDERS, ["cousin"]);
+    expect(married("cousin")).toBe("cousin · husband");
   });
 
   it("reads correctly from a different anchor", () => {

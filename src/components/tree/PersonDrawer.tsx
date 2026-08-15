@@ -1,14 +1,27 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatFullDate } from "@/lib/person-format";
 import type { PersonDTO } from "@/lib/tree";
 
+export type DrawerMarriage = {
+  id: string;
+  spouse: PersonDTO;
+  startYear: number | null;
+  endYear: number | null;
+  endReason: string | null;
+};
+
 type Props = {
   person: PersonDTO;
   parents: PersonDTO[];
+  /** Anyone sharing at least one parent — half-siblings included. */
+  siblings: PersonDTO[];
   /** Named to avoid colliding with React's own `children` prop. */
   childPeople: PersonDTO[];
+  /** Recorded marriages this person is part of. */
+  marriages: DrawerMarriage[];
   /** How this person relates to the anchor, when one is set. */
   relation?: string | null;
   onClose: () => void;
@@ -48,7 +61,9 @@ function RelativeList({ label, people }: { label: string; people: PersonDTO[] })
 export default function PersonDrawer({
   person,
   parents,
+  siblings,
   childPeople,
+  marriages,
   relation,
   onClose,
 }: Props) {
@@ -108,7 +123,34 @@ export default function PersonDrawer({
             {person.bio}
           </p>
         )}
+        {marriages.length > 0 && (
+          <div className="mt-4">
+            <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-gray-500">
+              Married to
+            </h3>
+            <ul className="space-y-1.5">
+              {marriages.map((marriage) => (
+                <li key={marriage.id}>
+                  <Link
+                    href={`/family/${marriage.id}`}
+                    className="flex min-h-11 items-center justify-between gap-2 rounded-lg border border-gray-800 bg-[#161b22] px-3 text-sm"
+                  >
+                    <span className="truncate text-gray-100">
+                      {marriage.spouse.firstName} {marriage.spouse.lastName}
+                    </span>
+                    <span className="shrink-0 text-xs text-gray-500">
+                      {marriage.startYear ?? ""}
+                      {marriage.endYear ? `–${marriage.endYear}` : ""} ›
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <RelativeList label="Parents" people={parents} />
+        <RelativeList label="Siblings" people={siblings} />
         <RelativeList label="Children" people={childPeople} />
       </div>
 
@@ -123,6 +165,12 @@ export default function PersonDrawer({
           className="min-h-11 w-full rounded-lg bg-[#58a6ff] px-3 py-2 text-sm font-semibold text-[#0d1117] transition-opacity hover:opacity-90"
         >
           ＋ Add child under {person.firstName}
+        </button>
+        <button
+          onClick={() => router.push(`/marry/${person.id}`)}
+          className="min-h-11 w-full rounded-lg border border-gray-700 bg-[#161b22] px-3 py-2 text-sm font-semibold text-gray-300 transition-colors hover:border-gray-600 hover:text-gray-100"
+        >
+          ⚭ Record a marriage
         </button>
         <button
           onClick={() => router.push(`/correct/${person.id}`)}

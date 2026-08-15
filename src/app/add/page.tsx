@@ -16,16 +16,21 @@ export default async function AddPage({
 }) {
   // Optional parent pre-selected by "Add child under …" on a person's card.
   const { parentId } = await searchParams;
-  let initialParent: { id: string; name: string } | null = null;
+  let initialParent: {
+    id: string;
+    name: string;
+    gender: "MALE" | "FEMALE" | "OTHER" | null;
+  } | null = null;
   if (parentId) {
     const parent = await prisma.person.findFirst({
       where: { id: parentId, status: PersonStatus.APPROVED, deletedAt: null },
-      select: { id: true, firstName: true, lastName: true },
+      select: { id: true, firstName: true, lastName: true, gender: true },
     });
     if (parent) {
       initialParent = {
         id: parent.id,
         name: `${parent.firstName} ${parent.lastName}`,
+        gender: parent.gender,
       };
     }
   }

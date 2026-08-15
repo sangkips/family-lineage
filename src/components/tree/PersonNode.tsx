@@ -87,6 +87,19 @@ function PersonNode({ data, selected }: NodeProps<PersonFlowNode>) {
       )}
 
       <Handle type="target" position={Position.Top} className="!bg-gray-500 !w-2 !h-2" />
+      {/* Side handles carry the spouse connector between partners. */}
+      <Handle
+        id="spouse-left"
+        type="target"
+        position={Position.Left}
+        className="!h-1.5 !w-1.5 !border-0 !bg-transparent"
+      />
+      <Handle
+        id="spouse-right"
+        type="source"
+        position={Position.Right}
+        className="!h-1.5 !w-1.5 !border-0 !bg-transparent"
+      />
 
       <div className="flex items-center gap-2 px-2.5 py-2 sm:gap-2.5 sm:px-3 sm:py-2.5">
         <div

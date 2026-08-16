@@ -55,8 +55,7 @@ export type AdminSubmission = {
   edits: AdminEdit[];
 };
 
-const field =
-  "w-full min-h-11 rounded-lg border border-gray-700 bg-[#0d1117] px-3 py-2 text-base outline-none focus:border-[#58a6ff] sm:min-h-9 sm:text-sm";
+const field = "field";
 
 function year(iso: string | null): string {
   return iso ? String(new Date(iso).getUTCFullYear()) : "";
@@ -67,7 +66,7 @@ function names(submission: AdminSubmission): string {
   return submission.edits
     .map((edit) =>
       edit.marriage
-        ? `${edit.marriage.partnerA} ⚭ ${edit.marriage.partnerB}`
+        ? `${edit.marriage.partnerA} and ${edit.marriage.partnerB}`
         : edit.person
           ? `${edit.person.firstName} ${edit.person.lastName}`
           : ""
@@ -86,7 +85,7 @@ function kindLabel(kind: string): string {
  * One submission as a single line: who it is and what kind of change it is.
  * Clicking the name opens the details — the editable fields, the merge choice
  * and where the entry came from — because a queue is read by scanning names,
- * not forms. The ⋯ menu carries only the two decisions.
+ * not forms. The overflow menu carries only the two decisions.
  */
 export default function SubmissionRow({ submission }: { submission: AdminSubmission }) {
   const router = useRouter();
@@ -192,7 +191,7 @@ export default function SubmissionRow({ submission }: { submission: AdminSubmiss
   if (settled) return null;
 
   return (
-    <li className="rounded-xl border border-gray-800 bg-[#161b22]">
+    <li className="card overflow-hidden">
       <div className="flex items-center gap-3 p-3">
         <div className="min-w-0 flex-1">
           {/* The name is the way into the details — the obvious thing to click
@@ -201,21 +200,21 @@ export default function SubmissionRow({ submission }: { submission: AdminSubmiss
             type="button"
             onClick={() => setOpen((v) => !v)}
             aria-expanded={open}
-            className="max-w-full truncate text-left text-sm font-semibold text-gray-100 hover:text-[#79c0ff] hover:underline"
+            className="max-w-full truncate text-left font-display text-[15px] font-bold text-ink hover:text-cobalt hover:underline"
           >
             {names(submission)}
             {duplicateCount > 0 && (
               <span
                 title={`${duplicateCount} possible duplicate${duplicateCount > 1 ? "s" : ""} — open the details to link instead of creating a copy`}
-                className="ml-2 align-middle text-xs text-amber-400"
+                className="ml-1.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-ochre align-middle font-display text-[10px] font-bold text-white"
               >
-                ⚠
+                !
               </span>
             )}
           </button>
         </div>
 
-        <span className="shrink-0 text-xs text-gray-500">
+        <span className="eyebrow shrink-0 text-ink-soft">
           {kindLabel(submission.kind)}
         </span>
 
@@ -227,27 +226,35 @@ export default function SubmissionRow({ submission }: { submission: AdminSubmiss
             aria-haspopup="menu"
             aria-expanded={menuOpen}
             aria-label={`Actions for ${names(submission)}`}
-            className="flex h-11 w-11 items-center justify-center rounded-lg border border-gray-700 text-gray-300 disabled:opacity-40 sm:h-9 sm:w-9"
+            className="flex h-11 w-11 items-center justify-center rounded-lg border border-seam text-ink-soft transition-colors hover:border-cobalt hover:text-cobalt disabled:opacity-40 sm:h-9 sm:w-9"
           >
-            {busy ? "…" : <span aria-hidden className="text-lg leading-none">⋯</span>}
+            {busy ? (
+              "…"
+            ) : (
+              <svg aria-hidden className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor">
+                <circle cx="3" cy="8" r="1.4" />
+                <circle cx="8" cy="8" r="1.4" />
+                <circle cx="13" cy="8" r="1.4" />
+              </svg>
+            )}
           </button>
 
           {menuOpen && (
             <div
               role="menu"
-              className="absolute right-0 z-50 mt-2 w-44 overflow-hidden rounded-xl border border-gray-800 bg-[#0d1117] shadow-2xl"
+              className="floating absolute right-0 z-50 mt-2 w-44 overflow-hidden rounded-xl"
             >
               <button
                 role="menuitem"
                 onClick={() => act("approve")}
-                className="flex min-h-11 w-full items-center px-4 text-sm text-green-300 hover:bg-[#161b22]"
+                className="flex min-h-11 w-full items-center px-4 text-[15px] font-semibold text-leaf-ink hover:bg-leaf-wash"
               >
                 Approve
               </button>
               <button
                 role="menuitem"
                 onClick={() => act("reject")}
-                className="flex min-h-11 w-full items-center px-4 text-sm text-red-300 hover:bg-[#161b22]"
+                className="flex min-h-11 w-full items-center px-4 text-[15px] font-semibold text-hibiscus hover:bg-hibiscus-wash"
               >
                 Reject
               </button>
@@ -256,11 +263,11 @@ export default function SubmissionRow({ submission }: { submission: AdminSubmiss
         </div>
       </div>
 
-      {error && <p className="px-3 pb-2 text-xs text-red-300">{error}</p>}
+      {error && <p className="px-3 pb-2 text-[13px] text-hibiscus">{error}</p>}
 
       {open && (
-        <div className="space-y-4 border-t border-gray-800 p-3">
-          <p className="text-xs text-gray-500">
+        <div className="space-y-4 border-t border-seam bg-field p-3">
+          <p className="text-[13px] leading-relaxed text-ink-soft">
             {[
               ...submission.edits.map((edit) => {
                 if (edit.marriage) {
@@ -334,13 +341,13 @@ export default function SubmissionRow({ submission }: { submission: AdminSubmiss
                         [edit.id]: prev[edit.id] === duplicate.id ? null : duplicate.id,
                       }))
                     }
-                    className={`min-h-11 w-full rounded-lg border px-3 text-left text-xs sm:min-h-9 ${
+                    className={`min-h-11 w-full rounded-[10px] border px-3 text-left text-[13px] font-semibold sm:min-h-9 ${
                       merged === duplicate.id
-                        ? "border-[#58a6ff] bg-[#58a6ff]/10 text-[#79c0ff]"
-                        : "border-gray-700 bg-[#0d1117] text-gray-300"
+                        ? "border-cobalt bg-cobalt-wash text-cobalt"
+                        : "border-ochre bg-ochre-wash text-ochre-ink"
                     }`}
                   >
-                    {merged === duplicate.id ? "✓ linking to " : "Link to existing "}
+                    {merged === duplicate.id ? "Linking to " : "Link to existing "}
                     {duplicate.firstName} {duplicate.lastName}
                     {duplicate.birthDate && ` (b. ${year(duplicate.birthDate)})`}
                   </button>
@@ -361,13 +368,13 @@ export default function SubmissionRow({ submission }: { submission: AdminSubmiss
             <button
               onClick={() => act("approve")}
               disabled={busy !== null}
-              className="min-h-11 flex-1 rounded-lg border border-green-500/40 bg-green-500/10 text-xs font-semibold text-green-300 disabled:opacity-40 sm:min-h-9"
+              className="btn btn-approve flex-1 text-[13px]"
             >
               Approve
             </button>
             <button
               onClick={() => setOpen(false)}
-              className="min-h-11 rounded-lg border border-gray-700 px-4 text-xs text-gray-300 sm:min-h-9"
+              className="btn btn-quiet btn-inline px-4 text-[13px]"
             >
               Close
             </button>

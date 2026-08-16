@@ -57,17 +57,18 @@ export default function SignUpPage() {
   }
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-[#0d1117] px-4 text-gray-100">
-      <div className="w-full max-w-sm rounded-2xl border border-gray-800 bg-[#161b22] p-5 shadow-xl sm:p-8">
-        <h1 className="text-xl font-bold">Create an admin account</h1>
-        <p className="mt-1 text-sm text-gray-400">
-          Accounts are for tree admins only. To add yourself or a relative, go
-          back to the tree and tap Add — no account needed.
+    <main className="flex min-h-dvh items-center justify-center bg-field px-4">
+      <div className="card w-full max-w-sm p-5 sm:p-8">
+        <p className="eyebrow">The register</p>
+        <h1 className="title mt-1.5 text-[26px]">Create an admin account</h1>
+        <p className="mt-2 text-[15px] leading-relaxed text-ink-soft">
+          Accounts are for admins only. To add yourself or a relative, go back to
+          the tree and tap Add a person — no account needed.
         </p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <div>
-            <label htmlFor="email" className="mb-1 block text-sm text-gray-300">
+            <label htmlFor="email" className="field-label mb-1">
               Email
             </label>
             <input
@@ -76,11 +77,11 @@ export default function SignUpPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-gray-700 bg-[#0d1117] min-h-11 px-3 py-2 text-base outline-none focus:border-[#58a6ff] sm:min-h-0 sm:text-sm"
+              className="field"
             />
           </div>
           <div>
-            <label htmlFor="password" className="mb-1 block text-sm text-gray-300">
+            <label htmlFor="password" className="field-label mb-1">
               Password
             </label>
             <input
@@ -90,33 +91,21 @@ export default function SignUpPage() {
               minLength={6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-gray-700 bg-[#0d1117] min-h-11 px-3 py-2 text-base outline-none focus:border-[#58a6ff] sm:min-h-0 sm:text-sm"
+              className="field"
             />
           </div>
 
-          {error && (
-            <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">
-              {error}
-            </p>
-          )}
-          {message && (
-            <p className="rounded-lg border border-green-500/40 bg-green-500/10 px-3 py-2 text-sm text-green-300">
-              {message}
-            </p>
-          )}
+          {error && <p className="notice notice-error">{error}</p>}
+          {message && <p className="notice notice-approved">{message}</p>}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="min-h-11 w-full rounded-lg bg-[#58a6ff] px-4 py-2 text-sm font-semibold text-[#0d1117] transition-opacity hover:opacity-90 disabled:opacity-50"
-          >
+          <button type="submit" disabled={loading} className="btn">
             {loading ? "Creating account…" : "Sign up"}
           </button>
         </form>
 
-        <p className="mt-4 text-center text-sm text-gray-400">
+        <p className="mt-4 text-center text-[15px] text-ink-soft">
           Already a member?{" "}
-          <Link href="/login" className="inline-flex min-h-11 items-center px-1 text-[#58a6ff] hover:underline">
+          <Link href="/login" className="nav-link px-1">
             Sign in
           </Link>
         </p>

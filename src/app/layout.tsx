@@ -1,28 +1,35 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Saira, Source_Sans_3 } from "next/font/google";
 import { ToastProvider } from "@/components/ui/Toast";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Saira carries a width axis, so caps labels can sit semi-condensed and read
+// like lettering printed onto cloth.
+const saira = Saira({
+  variable: "--font-saira",
   subsets: ["latin"],
+  axes: ["wdth"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+// Source Sans holds its shape at 13px on a cheap Android panel, which is what
+// most of this register is read on.
+const sourceSans = Source_Sans_3({
+  variable: "--font-source-sans",
   subsets: ["latin"],
+  weight: ["400", "600"],
 });
 
 export const metadata: Metadata = {
-  title: "Family Tree",
-  description: "A roadmap.sh-style interactive family tree.",
+  title: "The Family Register",
+  description:
+    "Who married who, and every child of the house. Anyone can add a relative; an admin approves each entry before it appears.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${saira.variable} ${sourceSans.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <ToastProvider>{children}</ToastProvider>

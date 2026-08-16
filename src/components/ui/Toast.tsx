@@ -50,12 +50,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div
             key={t.id}
             role="status"
-            className={`pointer-events-auto w-full max-w-sm rounded-xl border px-4 py-3 text-sm shadow-2xl backdrop-blur ${
+            className={`notice pointer-events-auto w-full max-w-sm shadow-[0_16px_36px_-18px_rgb(16_26_46/0.5)] ${
               t.tone === "error"
-                ? "border-red-500/40 bg-red-500/15 text-red-200"
+                ? "notice-error"
                 : t.tone === "info"
-                  ? "border-gray-700 bg-[#161b22]/95 text-gray-200"
-                  : "border-green-500/40 bg-green-500/15 text-green-200"
+                  ? "border-seam bg-card text-ink"
+                  : "notice-approved"
             }`}
           >
             {t.message}

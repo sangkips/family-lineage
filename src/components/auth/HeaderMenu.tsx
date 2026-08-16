@@ -55,18 +55,22 @@ export default function HeaderMenu({
         aria-expanded={open}
         aria-haspopup="menu"
         aria-label="More options"
-        className="flex h-11 w-11 items-center justify-center rounded-lg border border-gray-700 bg-[#161b22] text-gray-300 transition-colors active:bg-[#1f2630] sm:h-9 sm:w-9 sm:hover:border-gray-600"
+        className="flex h-11 w-11 items-center justify-center rounded-lg border border-white/25 text-white transition-colors active:bg-white/15 sm:h-9 sm:w-9 sm:hover:bg-white/15"
       >
-        <span aria-hidden className="text-lg leading-none">⋯</span>
+        <svg aria-hidden className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor">
+          <circle cx="3" cy="8" r="1.4" />
+          <circle cx="8" cy="8" r="1.4" />
+          <circle cx="13" cy="8" r="1.4" />
+        </svg>
       </button>
 
       {open && (
         <div
           role="menu"
-          className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-xl border border-gray-800 bg-[#161b22] shadow-2xl"
+          className="floating absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-xl"
         >
           {email && (
-            <p className="truncate border-b border-gray-800 px-4 py-2.5 text-xs text-gray-500">
+            <p className="truncate border-b border-seam px-4 py-2.5 text-xs text-ink-soft">
               {email}
             </p>
           )}
@@ -76,7 +80,7 @@ export default function HeaderMenu({
                 key={item.href}
                 href={item.href}
                 onClick={() => setOpen(false)}
-                className="flex min-h-11 items-center px-4 py-2.5 text-sm text-gray-300 transition-colors active:bg-[#0d1117] sm:hover:bg-[#0d1117]"
+                className="flex min-h-11 items-center px-4 py-2.5 text-[15px] text-ink transition-colors active:bg-cobalt-wash sm:hover:bg-cobalt-wash"
               >
                 {item.label}
               </a>
@@ -85,17 +89,15 @@ export default function HeaderMenu({
                 key={item.href}
                 href={item.href}
                 onClick={() => setOpen(false)}
-                className={`flex min-h-11 items-center px-4 py-2.5 text-sm transition-colors active:bg-[#0d1117] sm:hover:bg-[#0d1117] ${
-                  item.tone === "admin" ? "text-amber-300" : "text-gray-300"
+                className={`flex min-h-11 items-center px-4 py-2.5 text-[15px] transition-colors active:bg-cobalt-wash sm:hover:bg-cobalt-wash ${
+                  item.tone === "admin" ? "font-semibold text-ochre-ink" : "text-ink"
                 }`}
               >
                 {item.label}
               </Link>
             )
           )}
-          {children && (
-            <div className="border-t border-gray-800 p-2">{children}</div>
-          )}
+          {children && <div className="border-t border-seam p-2">{children}</div>}
         </div>
       )}
     </div>

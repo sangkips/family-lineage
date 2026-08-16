@@ -11,8 +11,7 @@ export type ExistingMarriageData = {
   endReason: "" | "DIVORCE" | "DEATH";
 };
 
-const field =
-  "w-full min-h-11 rounded-lg border border-gray-700 bg-[#0d1117] px-3 py-2 text-base outline-none focus:border-[#58a6ff] sm:min-h-0 sm:text-sm";
+const field = "field";
 
 /**
  * Correct a marriage already in the register. Only the dates are editable —
@@ -82,14 +81,12 @@ export default function ExistingMarriage({
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-2xl border border-gray-800 bg-[#161b22] p-4 sm:p-6"
+      className="card p-4 sm:p-6"
     >
-      <p className="text-sm font-semibold text-gray-100">
-        Married to {marriage.spouseName}
-      </p>
+      <p className="section-heading">Married to {marriage.spouseName}</p>
 
       {done ? (
-        <p className="mt-2 text-sm text-green-300">
+        <p className="notice notice-approved mt-3">
           Correction sent — an admin will review it.
         </p>
       ) : (
@@ -98,7 +95,7 @@ export default function ExistingMarriage({
             <div>
               <label
                 htmlFor={`start-${marriage.id}`}
-                className="mb-1 block text-sm text-gray-300"
+                className="field-label mb-1"
               >
                 Year they married
               </label>
@@ -108,17 +105,17 @@ export default function ExistingMarriage({
                 value={startYear}
                 onChange={(e) => setStartYear(e.target.value)}
                 placeholder="e.g. 1965"
-                className={field}
+                className={`${field} tnum`}
               />
             </div>
           </div>
 
-          <label className="mt-4 flex items-center gap-2 text-sm text-gray-300">
+          <label className="mt-4 flex min-h-11 items-center gap-2 text-[15px] text-ink">
             <input
               type="checkbox"
               checked={ended}
               onChange={(e) => setEnded(e.target.checked)}
-              className="h-4 w-4"
+              className="h-4 w-4 accent-[var(--color-cobalt)]"
             />
             The marriage has ended
           </label>
@@ -131,7 +128,7 @@ export default function ExistingMarriage({
                 onChange={(e) => setEndYear(e.target.value)}
                 placeholder="Year it ended"
                 aria-label={`Year the marriage to ${marriage.spouseName} ended`}
-                className={field}
+                className={`${field} tnum`}
               />
               <select
                 value={endReason}
@@ -145,12 +142,12 @@ export default function ExistingMarriage({
             </div>
           )}
 
-          {error && <p className="mt-3 text-sm text-red-300">{error}</p>}
+          {error && <p className="notice notice-error mt-3">{error}</p>}
 
           <button
             type="submit"
             disabled={submitting || !changed}
-            className="mt-4 min-h-11 w-full rounded-lg border border-gray-700 bg-[#0d1117] px-4 text-sm font-semibold text-gray-200 disabled:opacity-40"
+            className="btn btn-quiet mt-4"
           >
             {submitting ? "Sending…" : "Send correction"}
           </button>

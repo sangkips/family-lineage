@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
+import RegisterPage from "@/components/chrome/RegisterPage";
 import MarriageForm from "@/components/submit/MarriageForm";
 import { PersonStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -48,27 +48,21 @@ export default async function MarryPage({
   });
 
   return (
-    <main className="min-h-dvh bg-[#0d1117] px-4 py-8 text-gray-100 sm:py-10">
-      <div className="mx-auto w-full max-w-2xl">
-        <Link href="/" className="text-sm text-[#58a6ff] hover:underline">
-          ← Back to tree
-        </Link>
-
-        <h1 className="mt-4 text-xl font-bold sm:text-2xl">
-          {existing.length > 0 ? "Marriages of" : "Record a marriage for"}{" "}
-          {person.firstName} {person.lastName}
-        </h1>
-        <p className="mt-1 text-sm leading-relaxed text-gray-400">
-          {existing.length > 0
-            ? "Correct the dates below, or record another marriage. An admin reviews every change before the tree is updated."
-            : "Search for their spouse, or enter someone who married into the family and is not in the register yet. An admin reviews it before it appears on the tree."}
-        </p>
-
-        <MarriageForm
-          person={{ id: person.id, name: `${person.firstName} ${person.lastName}` }}
-          existing={existing}
-        />
-      </div>
-    </main>
+    <RegisterPage
+      hem="contribute"
+      eyebrow={`${person.firstName} ${person.lastName}`}
+      title={existing.length > 0 ? "Marriages" : "Record a marriage"}
+      intro={
+        existing.length > 0
+          ? "Correct the dates below, or record another marriage."
+          : "Search for their spouse, or enter someone who married into the family and is not in the register yet."
+      }
+      jina="An admin reviews every marriage before it appears on the tree."
+    >
+      <MarriageForm
+        person={{ id: person.id, name: `${person.firstName} ${person.lastName}` }}
+        existing={existing}
+      />
+    </RegisterPage>
   );
 }

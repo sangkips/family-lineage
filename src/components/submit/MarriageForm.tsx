@@ -8,9 +8,8 @@ import ExistingMarriage, {
   type ExistingMarriageData,
 } from "@/components/submit/ExistingMarriage";
 
-const field =
-  "w-full min-h-11 rounded-lg border border-gray-700 bg-[#0d1117] px-3 py-2 text-base outline-none focus:border-[#58a6ff] sm:min-h-0 sm:text-sm";
-const label = "mb-1 block text-sm text-gray-300";
+const field = "field";
+const label = "field-label mb-1";
 
 type Partner = { id: string; name: string };
 
@@ -96,16 +95,14 @@ export default function MarriageForm({
 
   if (done) {
     return (
-      <div className="mt-6 rounded-2xl border border-green-500/40 bg-green-500/10 p-5 sm:p-8">
-        <h2 className="text-xl font-bold text-green-300">Marriage sent for review</h2>
-        <p className="mt-2 text-sm leading-relaxed text-gray-300">
+      <div className="card border-leaf bg-leaf-wash p-5 sm:p-8">
+        <p className="eyebrow text-leaf-ink">Sent for review</p>
+        <h2 className="title mt-1.5 text-[24px]">Marriage recorded</h2>
+        <p className="mt-2 text-[15px] leading-relaxed text-ink">
           Once an admin approves it, {person.name} and {spouse?.name} will be joined
           on the tree with their own family page.
         </p>
-        <Link
-          href="/"
-          className="mt-5 flex min-h-11 w-full items-center justify-center rounded-lg bg-[#58a6ff] px-4 text-sm font-semibold text-[#0d1117]"
-        >
+        <Link href="/" className="btn mt-5">
           Back to the tree
         </Link>
       </div>
@@ -113,7 +110,7 @@ export default function MarriageForm({
   }
 
   const recorded = (
-    <div className="mt-6 space-y-4">
+    <div className="space-y-4">
       {existing.map((marriage) => (
         <ExistingMarriage key={marriage.id} marriage={marriage} />
       ))}
@@ -127,9 +124,9 @@ export default function MarriageForm({
         <button
           type="button"
           onClick={() => setAddingAnother(true)}
-          className="mt-4 min-h-12 w-full rounded-lg border border-dashed border-gray-700 px-4 text-sm text-gray-300"
+          className="btn btn-quiet mt-4 min-h-12 border-dashed"
         >
-          ＋ Record another marriage
+          Record another marriage
         </button>
       </>
     );
@@ -138,37 +135,55 @@ export default function MarriageForm({
   return (
     <>
       {existing.length > 0 && recorded}
-      <form onSubmit={handleSubmit} className="mt-6 space-y-6">
-      <section className="rounded-2xl border border-gray-800 bg-[#161b22] p-4 sm:p-6">
-        <h2 className="text-sm font-semibold text-gray-300">
+      <form onSubmit={handleSubmit} className="space-y-6">
+      <section className="card p-4 sm:p-6">
+        <h2 className="section-heading">
           {existing.length > 0 ? "Record another marriage" : "Who did they marry?"}
         </h2>
 
         {spouse ? (
-          <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-gray-700/60 bg-[#0d1117] px-3 py-3">
-            <span className="text-sm text-gray-100">{spouse.name}</span>
+          <div className="mt-3 flex items-center justify-between gap-3 rounded-[10px] border border-seam bg-field px-3 py-2">
+            <span className="text-[15px] font-semibold text-ink">{spouse.name}</span>
             <button
               type="button"
               onClick={() => setSpouse(null)}
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500"
+              className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft hover:text-hibiscus"
               aria-label="Choose someone else"
             >
-              ✕
+              <svg
+                aria-hidden
+                className="h-4 w-4"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+              >
+                <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" />
+              </svg>
             </button>
           </div>
         ) : outsider ? (
-          <div className="mt-3 space-y-3 rounded-lg border border-gray-700/60 bg-[#0d1117] p-3">
+          <div className="mt-3 space-y-3 rounded-[10px] border border-seam bg-field p-3">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-xs uppercase tracking-wide text-gray-500">
-                Marrying into the family
-              </p>
+              <p className="eyebrow">Marrying into the family</p>
               <button
                 type="button"
                 onClick={() => setOutsider(null)}
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500"
+                className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft hover:text-hibiscus"
                 aria-label="Search the register instead"
               >
-                ✕
+                <svg
+                aria-hidden
+                className="h-4 w-4"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+              >
+                <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" />
+              </svg>
               </button>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -237,12 +252,12 @@ export default function MarriageForm({
                           name: `${result.firstName} ${result.lastName}`,
                         })
                       }
-                      className="flex min-h-12 w-full items-center justify-between gap-3 rounded-lg border border-gray-700/60 bg-[#0d1117] px-3 text-left"
+                      className="list-row min-h-12 w-full"
                     >
-                      <span className="text-sm text-gray-200">
+                      <span className="text-[15px] text-ink">
                         {result.firstName} {result.lastName}
                       </span>
-                      <span className="shrink-0 text-xs text-gray-500">
+                      <span className="tnum shrink-0 text-xs text-ink-soft">
                         {result.birthYear ? `b. ${result.birthYear}` : ""}
                       </span>
                     </button>
@@ -252,7 +267,9 @@ export default function MarriageForm({
             {search.query.trim().length >= 2 &&
               !search.searching &&
               search.results.length === 0 && (
-                <p className="mt-3 text-xs text-gray-500">No matches in the register.</p>
+                <p className="mt-3 text-[13px] text-ink-soft">
+                  No matches in the register.
+                </p>
               )}
 
             {/* Someone marrying in has no relatives here yet, so there is no
@@ -262,15 +279,15 @@ export default function MarriageForm({
               onClick={() =>
                 setOutsider({ firstName: "", lastName: "", birthYear: "", gender: "" })
               }
-              className="mt-3 min-h-11 w-full rounded-lg border border-dashed border-gray-700 px-3 text-sm text-gray-300"
+              className="btn btn-quiet mt-3 border-dashed"
             >
-              ＋ Not in the register — they married into the family
+              Not in the register — they married into the family
             </button>
           </>
         )}
       </section>
 
-      <section className="rounded-2xl border border-gray-800 bg-[#161b22] p-4 sm:p-6">
+      <section className="card p-4 sm:p-6">
         <div>
           <label htmlFor="startYear" className={label}>
             Year they married
@@ -281,16 +298,16 @@ export default function MarriageForm({
             value={startYear}
             onChange={(e) => setStartYear(e.target.value)}
             placeholder="e.g. 1965"
-            className={field}
+            className={`${field} tnum`}
           />
         </div>
 
-        <label className="mt-4 flex items-center gap-2 text-sm text-gray-300">
+        <label className="mt-4 flex min-h-11 items-center gap-2 text-[15px] text-ink">
           <input
             type="checkbox"
             checked={ended}
             onChange={(e) => setEnded(e.target.checked)}
-            className="h-4 w-4"
+            className="h-4 w-4 accent-[var(--color-cobalt)]"
           />
           The marriage has ended
         </label>
@@ -303,7 +320,7 @@ export default function MarriageForm({
               onChange={(e) => setEndYear(e.target.value)}
               placeholder="Year it ended"
               aria-label="Year the marriage ended"
-              className={field}
+              className={`${field} tnum`}
             />
             <select
               value={endReason}
@@ -318,17 +335,9 @@ export default function MarriageForm({
         )}
       </section>
 
-      {error && (
-        <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2.5 text-sm text-red-300">
-          {error}
-        </p>
-      )}
+      {error && <p className="notice notice-error">{error}</p>}
 
-      <button
-        type="submit"
-        disabled={submitting}
-        className="min-h-12 w-full rounded-lg bg-[#58a6ff] px-4 text-sm font-semibold text-[#0d1117] disabled:opacity-50"
-      >
+      <button type="submit" disabled={submitting} className="btn min-h-12">
         {submitting ? "Sending…" : "Send for approval"}
       </button>
       </form>

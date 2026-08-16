@@ -62,25 +62,25 @@ export default function HangingPeople({ people }: { people: HangingPerson[] }) {
 
   return (
     <section className="mt-8">
-      <h2 className="text-sm font-semibold text-gray-200">Not connected to anyone</h2>
-      <p className="mt-1 text-xs leading-relaxed text-gray-500">
+      <h2 className="section-heading">Not connected to anyone</h2>
+      <p className="mt-1 text-[13px] leading-relaxed text-ink-soft">
         These people have no parent and no child, so they float beside the tree
         rather than belonging to it. New entries can no longer be saved this way.
       </p>
 
-      {error && <p className="mt-2 text-sm text-red-300">{error}</p>}
+      {error && <p className="notice notice-error mt-2">{error}</p>}
 
       <ul className="mt-3 space-y-2">
         {visible.map((person) => (
           <li
             key={person.id}
-            className="flex flex-col gap-3 rounded-xl border border-gray-800 bg-[#161b22] p-4 sm:flex-row sm:items-center sm:justify-between"
+            className="card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
           >
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-gray-100">
+              <p className="section-heading">
                 {person.firstName} {person.lastName}
               </p>
-              <p className="mt-0.5 text-xs text-gray-500">
+              <p className="tnum mt-0.5 text-[13px] text-ink-soft">
                 {person.birthDate
                   ? `b. ${new Date(person.birthDate).getUTCFullYear()}`
                   : "birth year unknown"}{" "}
@@ -89,8 +89,8 @@ export default function HangingPeople({ people }: { people: HangingPerson[] }) {
               </p>
 
               {person.hasNamesake && (
-                <p className="mt-1.5 text-xs text-amber-400">
-                  ⚠ Another {person.firstName} {person.lastName} is in the tree with
+                <p className="notice notice-pending mt-2 text-[13px]">
+                  Another {person.firstName} {person.lastName} is in the tree with
                   relatives. This is a separate, unconnected record — deleting it
                   leaves that one untouched.
                 </p>
@@ -99,7 +99,7 @@ export default function HangingPeople({ people }: { people: HangingPerson[] }) {
               <Link
                 href={`/?focus=${person.id}`}
                 target="_blank"
-                className="mt-1.5 inline-flex min-h-9 items-center text-xs text-[#58a6ff] hover:underline"
+                className="nav-link mt-0.5 text-[13px]"
               >
                 See this record on the tree ↗
               </Link>
@@ -110,14 +110,14 @@ export default function HangingPeople({ people }: { people: HangingPerson[] }) {
                 <button
                   onClick={() => remove(person)}
                   disabled={busyId !== null}
-                  className="min-h-11 rounded-lg border border-red-500/60 bg-red-500/20 px-4 text-xs font-semibold text-red-200 disabled:opacity-40 sm:min-h-9"
+                  className="btn btn-inline border-hibiscus bg-hibiscus px-4 text-[13px] hover:bg-hibiscus"
                 >
                   {busyId === person.id ? "…" : "Yes, delete"}
                 </button>
                 <button
                   onClick={() => setConfirmId(null)}
                   disabled={busyId !== null}
-                  className="min-h-11 rounded-lg border border-gray-700 px-4 text-xs text-gray-300 sm:min-h-9"
+                  className="btn btn-quiet btn-inline px-4 text-[13px]"
                 >
                   Cancel
                 </button>
@@ -125,7 +125,7 @@ export default function HangingPeople({ people }: { people: HangingPerson[] }) {
             ) : (
               <button
                 onClick={() => setConfirmId(person.id)}
-                className="min-h-11 shrink-0 rounded-lg border border-red-500/40 bg-red-500/10 px-4 text-xs font-semibold text-red-300 sm:min-h-9"
+                className="btn btn-danger btn-inline shrink-0 px-4 text-[13px]"
               >
                 Delete
               </button>

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import RegisterPage from "@/components/chrome/RegisterPage";
 import SubmissionForm from "@/components/submit/SubmissionForm";
 import { PersonStatus } from "@/generated/prisma/client";
 import { spousesOf } from "@/lib/household";
@@ -47,24 +47,22 @@ export default async function AddPage({
   }));
 
   return (
-    <main className="min-h-dvh bg-[#0d1117] px-4 py-8 text-gray-100 sm:py-10">
-      <div className="mx-auto w-full max-w-2xl">
-        <Link href="/" className="text-sm text-[#58a6ff] hover:underline">
-          ← Back to tree
-        </Link>
-
-        <h1 className="mt-4 text-xl font-bold sm:text-2xl">
-          {initialParent
-            ? `Add a child under ${initialParent.name}`
-            : "Add yourself or a relative"}
-        </h1>
-        <p className="mt-1 text-sm leading-relaxed text-gray-400">
-          Tell us who they are and who their parents are. A tree admin checks
-          every entry before it appears on the tree.
-        </p>
-
-        <SubmissionForm initialParent={initialParent} spouseOptions={spouseOptions} />
-      </div>
-    </main>
+    <RegisterPage
+      hem="contribute"
+      eyebrow={initialParent ? "Add a child" : "New entry"}
+      title={
+        initialParent
+          ? `Add a child under ${initialParent.name}`
+          : "Add yourself or a relative"
+      }
+      intro={
+        initialParent
+          ? "Their parents are already known. Just their own details are needed."
+          : "Say who they are and who their parents are. Everything else can be filled in later."
+      }
+      jina="Nothing appears on the tree until an admin approves it."
+    >
+      <SubmissionForm initialParent={initialParent} spouseOptions={spouseOptions} />
+    </RegisterPage>
   );
 }

@@ -74,8 +74,8 @@ export async function notifyAdminsOfPending(info: PendingNotification): Promise<
         }
       </table>
       <a href="${escapeHtml(info.adminUrl)}"
-         style="display: inline-block; background: #58a6ff; color: #0d1117;
-                padding: 10px 20px; border-radius: 8px; text-decoration: none;
+         style="display: inline-block; background: #123f8c; color: #ffffff;
+                padding: 10px 20px; border-radius: 10px; text-decoration: none;
                 font-weight: 600;">
         Review in moderation queue
       </a>

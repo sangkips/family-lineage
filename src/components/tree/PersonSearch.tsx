@@ -41,19 +41,19 @@ export default function PersonSearch({ onSelect }: Props) {
           onBlur={() => setTimeout(() => setOpen(false), 150)}
           placeholder="Search people…"
           aria-label="Search people"
-          className="w-full rounded-xl border border-gray-700 bg-[#0d1117]/95 px-3 py-2.5 pr-20 text-base text-gray-200 shadow-lg outline-none backdrop-blur placeholder:text-gray-500 focus:border-[#58a6ff] sm:text-sm"
+          className="field pr-20 shadow-[0_8px_24px_-16px_rgb(16_26_46/0.5)]"
         />
         {searching && (
-          <span className="absolute right-3 top-3 text-xs text-gray-500 sm:top-2.5">
-            Searching…
-          </span>
+          <span className="absolute right-3 top-3 text-xs text-ink-soft">Searching…</span>
         )}
       </div>
 
       {showResults && (
-        <ul className="absolute mt-2 max-h-[50dvh] w-full overflow-y-auto rounded-xl border border-gray-800 bg-[#161b22] shadow-2xl">
+        <ul className="floating absolute mt-2 max-h-[50dvh] w-full overflow-y-auto rounded-xl">
           {results.length === 0 && !searching ? (
-            <li className="px-3 py-3 text-sm text-gray-500">No matches found.</li>
+            <li className="px-3 py-3 text-[15px] text-ink-soft">
+              No one by that name. Check the spelling, or add them to the register.
+            </li>
           ) : (
             results.map((r) => (
               <li key={r.id}>
@@ -61,12 +61,12 @@ export default function PersonSearch({ onSelect }: Props) {
                   type="button"
                   onMouseDown={(e) => e.preventDefault() /* keep focus for onBlur */}
                   onClick={() => pick(r)}
-                  className="flex min-h-12 w-full items-center justify-between gap-3 px-3 py-3 text-left transition-colors active:bg-[#0d1117] sm:min-h-0 sm:py-2.5 sm:hover:bg-[#0d1117]"
+                  className="flex min-h-12 w-full items-center justify-between gap-3 px-3 py-3 text-left transition-colors active:bg-cobalt-wash sm:min-h-0 sm:py-2.5 sm:hover:bg-cobalt-wash"
                 >
-                  <span className="truncate text-base text-gray-200 sm:text-sm">
+                  <span className="truncate text-base text-ink">
                     {r.firstName} {r.lastName}
                   </span>
-                  <span className="shrink-0 text-xs text-gray-500">
+                  <span className="tnum shrink-0 text-xs text-ink-soft">
                     {r.birthYear ? `b. ${r.birthYear}` : r.isLiving ? "living" : "deceased"}
                   </span>
                 </button>

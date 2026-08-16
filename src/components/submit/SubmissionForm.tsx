@@ -25,9 +25,8 @@ type ParentSlot =
 
 const MAX_PARENTS = 2;
 
-const field =
-  "w-full min-h-11 rounded-lg border border-gray-700 bg-[#0d1117] px-3 py-2 text-base outline-none focus:border-[#58a6ff] sm:min-h-0 sm:text-sm";
-const label = "mb-1 block text-sm text-gray-300";
+const field = "field";
+const label = "field-label mb-1";
 
 function emptyNewParent(role: Role): ParentSlot {
   return { mode: "new", firstName: "", lastName: "", birthYear: "", gender: "", role };
@@ -177,17 +176,15 @@ export default function SubmissionForm({
 
   if (done) {
     return (
-      <div className="mt-6 rounded-2xl border border-green-500/40 bg-green-500/10 p-5 sm:p-8">
-        <h1 className="text-xl font-bold text-green-300">Thank you — sent for review</h1>
-        <p className="mt-2 text-sm leading-relaxed text-gray-300">
-          A tree admin will check the details and add them to the register. Entries
-          stay private until they are approved, so you will not see them on the tree
+      <div className="card border-leaf bg-leaf-wash p-5 sm:p-8">
+        <p className="eyebrow text-leaf-ink">Sent for review</p>
+        <h2 className="title mt-1.5 text-[24px]">Thank you</h2>
+        <p className="mt-2 text-[15px] leading-relaxed text-ink">
+          An admin will check the details and add them to the register. Entries stay
+          private until they are approved, so you will not see them on the tree
           straight away.
         </p>
-        <Link
-          href="/"
-          className="mt-5 flex min-h-11 w-full items-center justify-center rounded-lg bg-[#58a6ff] px-4 text-sm font-semibold text-[#0d1117]"
-        >
+        <Link href="/" className="btn mt-5">
           Back to the tree
         </Link>
       </div>
@@ -203,9 +200,9 @@ export default function SubmissionForm({
     !parents.some((p) => p.mode === "existing" && p.personId !== initialParent?.id);
 
   const spousePicker = chooseSpouse ? (
-    <section className="rounded-2xl border border-amber-500/30 bg-[#161b22] p-4">
-      <p className="text-sm font-semibold text-gray-200">Who is the other parent?</p>
-      <p className="mt-1 text-xs text-gray-500">
+    <section className="card border-ochre bg-ochre-wash p-4">
+      <p className="section-heading">Who is the other parent?</p>
+      <p className="mt-1 text-[13px] text-ink-soft">
         {initialParent?.name} has more than one marriage recorded.
       </p>
       <ul className="mt-3 space-y-2">
@@ -224,7 +221,7 @@ export default function SubmissionForm({
                   },
                 ])
               }
-              className="min-h-12 w-full rounded-lg border border-gray-700 bg-[#0d1117] px-3 text-left text-sm text-gray-200"
+              className="list-row min-h-12 w-full text-[15px]"
             >
               {spouse.name}
             </button>
@@ -235,13 +232,11 @@ export default function SubmissionForm({
   ) : null;
 
   const parentSummary = (
-    <section className="rounded-2xl border border-gray-800 bg-[#161b22] p-4">
+    <section className="card p-4">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs uppercase tracking-wide text-gray-500">
-            {parents.length > 1 ? "Parents" : "Parent"}
-          </p>
-          <p className="mt-0.5 truncate text-sm text-gray-100">
+          <p className="eyebrow">{parents.length > 1 ? "Parents" : "Parent"}</p>
+          <p className="mt-0.5 truncate text-[15px] text-ink">
             {parents
               .map((p) =>
                 p.mode === "existing"
@@ -254,7 +249,7 @@ export default function SubmissionForm({
         <button
           type="button"
           onClick={() => setShowParents(true)}
-          className="min-h-11 shrink-0 rounded-lg border border-gray-700 px-3 text-xs text-gray-300"
+          className="btn btn-quiet btn-inline shrink-0 text-[13px]"
         >
           Change
         </button>
@@ -263,9 +258,9 @@ export default function SubmissionForm({
   );
 
   const parentsPicker = (
-    <section className="rounded-2xl border border-gray-800 bg-[#161b22] p-4 sm:p-6">
-      <h2 className="text-sm font-semibold text-gray-300">Who are the parents?</h2>
-      <p className="mt-1 text-xs text-gray-500">
+    <section className="card p-4 sm:p-6">
+      <h2 className="section-heading">Who are the parents?</h2>
+      <p className="mt-1 text-[13px] text-ink-soft">
         Search the register, or enter a parent by hand if they are not in it yet.
       </p>
 
@@ -287,12 +282,12 @@ export default function SubmissionForm({
                     <button
                       type="button"
                       onClick={() => chooseParent(result)}
-                      className="flex min-h-12 w-full items-center justify-between gap-3 rounded-lg border border-gray-700/60 bg-[#0d1117] px-3 py-2.5 text-left"
+                      className="list-row min-h-12 w-full"
                     >
-                      <span className="text-sm text-gray-200">
+                      <span className="text-[15px] text-ink">
                         {result.firstName} {result.lastName}
                       </span>
-                      <span className="shrink-0 text-xs text-gray-500">
+                      <span className="tnum shrink-0 text-xs text-ink-soft">
                         {result.birthYear ? `b. ${result.birthYear}` : "year unknown"}
                       </span>
                     </button>
@@ -304,15 +299,15 @@ export default function SubmissionForm({
             {search.query.trim().length >= 2 &&
               !search.searching &&
               search.results.length === 0 && (
-                <p className="mt-3 text-xs text-gray-500">No matches found.</p>
+                <p className="mt-3 text-[13px] text-ink-soft">No matches found.</p>
               )}
 
             <button
               type="button"
               onClick={() => setParents([...parents, emptyNewParent("PARENT")])}
-              className="mt-3 min-h-11 w-full rounded-lg border border-dashed border-gray-700 px-3 text-sm text-gray-300"
+              className="btn btn-quiet mt-3 border-dashed"
             >
-              ＋ Parent is not in the tree — enter their details
+              Parent is not in the tree — enter their details
             </button>
           </>
         )}
@@ -321,19 +316,29 @@ export default function SubmissionForm({
           {parents.map((parent, index) => (
             <li
               key={index}
-              className="rounded-lg border border-gray-700/60 bg-[#0d1117] p-3"
+              className="rounded-[10px] border border-seam bg-field p-3"
             >
               <div className="flex items-start justify-between gap-3">
-                <p className="text-sm font-medium text-gray-200">
+                <p className="text-[15px] font-semibold text-ink">
                   {parent.mode === "existing" ? parent.name : "New parent"}
                 </p>
                 <button
                   type="button"
                   onClick={() => setParents(parents.filter((_, i) => i !== index))}
                   aria-label="Remove this parent"
-                  className="-mr-1 -mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-500"
+                  className="-mr-1 -mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-ink-soft hover:text-hibiscus"
                 >
-                  ✕
+                  <svg
+                    aria-hidden
+                    className="h-4 w-4"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                  >
+                    <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" />
+                  </svg>
                 </button>
               </div>
 
@@ -396,8 +401,8 @@ export default function SubmissionForm({
   );
 
   const detailsSection = (
-    <section className="rounded-2xl border border-gray-800 bg-[#161b22] p-4 sm:p-6">
-      <h2 className="text-sm font-semibold text-gray-300">Their details</h2>
+    <section className="card p-4 sm:p-6">
+      <h2 className="section-heading">Their details</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="firstName" className={label}>
@@ -467,14 +472,14 @@ export default function SubmissionForm({
               value={birthYear}
               onChange={(e) => setBirthYear(e.target.value)}
               placeholder="e.g. 1948"
-              className={`${field} disabled:opacity-40`}
+              className={`${field} tnum disabled:opacity-40`}
             />
-            <label className="mt-2 flex items-center gap-2 text-xs text-gray-400">
+            <label className="mt-2 flex min-h-11 items-center gap-2 text-[13px] text-ink-soft">
               <input
                 type="checkbox"
                 checked={useExactDate}
                 onChange={(e) => setUseExactDate(e.target.checked)}
-                className="h-4 w-4"
+                className="h-4 w-4 accent-[var(--color-cobalt)]"
               />
               I know the exact date
             </label>
@@ -506,7 +511,7 @@ export default function SubmissionForm({
   );
 
   return (
-    <form onSubmit={handleSubmit} className="mt-6 space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6">
       {/* With the parent already known, the child's details come first and the
           parent sits underneath as a line that can still be changed. */}
       {showParents ? (
@@ -522,22 +527,11 @@ export default function SubmissionForm({
         </>
       )}
 
-      {error && (
-        <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2.5 text-sm text-red-300">
-          {error}
-        </p>
-      )}
+      {error && <p className="notice notice-error">{error}</p>}
 
-      <button
-        type="submit"
-        disabled={submitting}
-        className="min-h-12 w-full rounded-lg bg-[#58a6ff] px-4 text-sm font-semibold text-[#0d1117] transition-opacity hover:opacity-90 disabled:opacity-50"
-      >
+      <button type="submit" disabled={submitting} className="btn min-h-12">
         {submitting ? "Sending…" : "Send for approval"}
       </button>
-      <p className="pb-4 text-center text-xs text-gray-500">
-        No account needed. An admin reviews every entry before it appears.
-      </p>
     </form>
   );
 }

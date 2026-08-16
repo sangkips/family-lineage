@@ -1,26 +1,383 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/*
+ * The register is dressed as a kanga: a solid border band (pindo), an open
+ * centre field (mji), and one printed line of plain speech along the hem
+ * (jina). Structure only — no printed motifs, which would cost legibility at
+ * 360px and buy costume.
+ *
+ * Cobalt and hibiscus are the whole decorative palette. Ochre and leaf are
+ * semantic: they mean pending and approved, and appear nowhere else.
+ */
+@theme {
+  --color-field: #f3f5f1;
+  --color-card: #ffffff;
+  --color-ink: #101a2e;
+  --color-ink-soft: #56637a;
+  --color-seam: #d8ddd4;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-cobalt: #2f3745;
+  --color-cobalt-deep: #0e2e63;
+  --color-cobalt-wash: #eaf0f9;
+  --color-hibiscus: #c42e60;
+  --color-hibiscus-wash: #fdeef3;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-ochre: #d2a020;
+  --color-ochre-wash: #fbf3df;
+  --color-ochre-ink: #7a5a08;
+  --color-leaf: #268a6e;
+  --color-leaf-wash: #e7f4ef;
+  /* Leaf itself is only 3.8:1 on its wash, so text and filled buttons use
+     this darker cut. Same colour, legible. */
+  --color-leaf-ink: #14654f;
+
+  --font-display: var(--font-saira), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-source-sans), ui-sans-serif, system-ui, sans-serif;
+
+  --radius-card: 14px;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-field);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+}
+
+/* One ring, everywhere, on the one accent that means "interactive". */
+:focus-visible {
+  outline: 2px solid var(--color-cobalt);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/*
+ * Component vocabulary. Named for what each thing is on the page.
+ *
+ * None of these carry outer margin: spacing between blocks belongs to the
+ * page that arranges them, so a page-level utility and a component rule can
+ * never cancel each other out.
+ */
+@layer components {
+  /* ── Cloth ─────────────────────────────────────────────── */
+
+  /* The pindo: the one loud element on any screen. */
+  .band {
+    background: var(--color-cobalt);
+    color: #ffffff;
+    border-bottom: 2px solid var(--hem-color, var(--color-hibiscus));
+  }
+
+  /* The jina: the register's single rule, printed along the hem. Matches the
+     band's hem colour, so a page is bordered in one colour top and bottom. */
+  .jina {
+    border-top: 2px solid var(--hem-color, var(--color-hibiscus));
+    padding-top: 0.75rem;
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 600;
+    font-stretch: 87.5%;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    line-height: 1.5;
+    color: var(--color-ink-soft);
+  }
+
+  .eyebrow {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 700;
+    font-stretch: 87.5%;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-cobalt);
+  }
+
+  .title {
+    font-family: var(--font-display);
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1.12;
+    letter-spacing: -0.01em;
+  }
+
+  .section-heading {
+    font-family: var(--font-display);
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.25;
+  }
+
+  /* ── Surfaces ──────────────────────────────────────────── */
+
+  .card {
+    background: var(--color-card);
+    border: 1px solid var(--color-seam);
+    border-radius: var(--radius-card);
+  }
+
+  /* A row in a list of people. Full-width tap target by construction. */
+  .list-row {
+    display: flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    background: var(--color-card);
+    border: 1px solid var(--color-seam);
+    border-radius: 10px;
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+    transition: border-color 120ms ease, background-color 120ms ease;
+  }
+
+  .list-row:active {
+    background: var(--color-cobalt-wash);
+  }
+
+  @media (hover: hover) {
+    .list-row:hover {
+      border-color: var(--color-cobalt);
+    }
+  }
+
+  .chip {
+    display: inline-flex;
+    min-height: 2.25rem;
+    align-items: center;
+    gap: 0.375rem;
+    background: color-mix(in srgb, var(--color-card) 92%, transparent);
+    border: 1px solid var(--color-seam);
+    border-radius: 999px;
+    padding: 0.25rem 0.75rem;
+    font-size: 12px;
+    color: var(--color-ink-soft);
+    backdrop-filter: blur(6px);
+  }
+
+  .chip-anchor {
+    border-color: var(--color-hibiscus);
+    color: var(--color-hibiscus);
+  }
+
+  /* Sheets that genuinely float get the only shadow in the system. */
+  .floating {
+    background: var(--color-card);
+    border: 1px solid var(--color-seam);
+    box-shadow: 0 18px 40px -18px rgb(16 26 46 / 0.35);
+  }
+
+  /* ── Fields ────────────────────────────────────────────── */
+
+  .field-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+
+  /* 16px is not a style choice: anything smaller and iOS Safari zooms the
+     page on focus and the user has to pinch back out. */
+  .field {
+    width: 100%;
+    min-height: 2.75rem;
+    background: var(--color-card);
+    border: 1px solid var(--color-seam);
+    border-radius: 10px;
+    padding: 0.5rem 0.75rem;
+    font-size: 16px;
+    color: var(--color-ink);
+    transition: border-color 120ms ease;
+  }
+
+  .field::placeholder {
+    color: var(--color-ink-soft);
+  }
+
+  .field:focus {
+    outline: none;
+    border-color: var(--color-cobalt);
+    box-shadow: 0 0 0 3px var(--color-cobalt-wash);
+  }
+
+  /* ── Actions ───────────────────────────────────────────── */
+
+  .btn {
+    display: inline-flex;
+    min-height: 2.75rem;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background: var(--color-cobalt);
+    color: #ffffff;
+    border: 1px solid var(--color-cobalt);
+    border-radius: 10px;
+    padding: 0.5rem 1rem;
+    font-size: 15px;
+    font-weight: 600;
+    transition: background-color 120ms ease;
+  }
+
+  .btn:active {
+    background: var(--color-cobalt-deep);
+  }
+
+  @media (hover: hover) {
+    .btn:hover {
+      background: var(--color-cobalt-deep);
+    }
+  }
+
+  .btn:disabled {
+    opacity: 0.5;
+  }
+
+  .btn-quiet {
+    background: var(--color-card);
+    color: var(--color-ink);
+    border-color: var(--color-seam);
+  }
+
+  .btn-quiet:active {
+    background: var(--color-cobalt-wash);
+  }
+
+  @media (hover: hover) {
+    .btn-quiet:hover {
+      background: var(--color-cobalt-wash);
+      border-color: var(--color-cobalt);
+    }
+  }
+
+  .btn-danger {
+    background: var(--color-card);
+    color: var(--color-hibiscus);
+    border-color: var(--color-hibiscus);
+  }
+
+  .btn-danger:active {
+    background: var(--color-hibiscus-wash);
+  }
+
+  @media (hover: hover) {
+    .btn-danger:hover {
+      background: var(--color-hibiscus-wash);
+    }
+  }
+
+  /* Inline width, for buttons sitting in a row rather than a stack. */
+  .btn-inline {
+    width: auto;
+  }
+
+  /* A link that behaves like navigation, sized for a thumb. */
+  .nav-link {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-cobalt);
+  }
+
+  @media (hover: hover) {
+    .nav-link:hover {
+      text-decoration: underline;
+    }
+  }
+
+  /* ── Notices ───────────────────────────────────────────── */
+
+  .notice {
+    border: 1px solid;
+    border-radius: 10px;
+    padding: 0.625rem 0.75rem;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .notice-pending {
+    border-color: var(--color-ochre);
+    background: var(--color-ochre-wash);
+    color: var(--color-ochre-ink);
+  }
+
+  .notice-approved {
+    border-color: var(--color-leaf);
+    background: var(--color-leaf-wash);
+    color: var(--color-leaf-ink);
+  }
+
+  /* Approve: the one affirmative filled button in the queue. */
+  .btn-approve {
+    background: var(--color-leaf-ink);
+    border-color: var(--color-leaf-ink);
+    color: #ffffff;
+  }
+
+  .btn-approve:active {
+    background: #0f5a45;
+  }
+
+  @media (hover: hover) {
+    .btn-approve:hover {
+      background: #0f5a45;
+    }
+  }
+
+  .notice-error {
+    border-color: var(--color-hibiscus);
+    background: var(--color-hibiscus-wash);
+    color: var(--color-hibiscus);
+  }
+
+  /* ── Numerals ──────────────────────────────────────────── */
+
+  /* Years, spans and counts line up in a column instead of jittering. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/*
+ * The one orchestrated moment: the tree unrolls once, like cloth off a bolt.
+ * It runs on the canvas as a whole rather than per card — a card-level
+ * animation would replay every time a branch collapses.
+ */
+@keyframes unroll {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.unroll {
+  animation: unroll 320ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .unroll {
+    animation: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* React Flow's own attribution, quietened onto the chalk field. */
+.react-flow__attribution {
+  background: transparent;
+}
+
+.react-flow__attribution a {
+  color: var(--color-ink-soft);
+  font-size: 10px;
 }

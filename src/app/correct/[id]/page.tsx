@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
+import RegisterPage from "@/components/chrome/RegisterPage";
 import CorrectionForm from "@/components/submit/CorrectionForm";
 import { PersonStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -46,22 +46,14 @@ export default async function CorrectPage({
   const private_ = person.isLiving && person.hideBirthDate;
 
   return (
-    <main className="min-h-dvh bg-[#0d1117] px-4 py-8 text-gray-100 sm:py-10">
-      <div className="mx-auto w-full max-w-2xl">
-        <Link href="/" className="text-sm text-[#58a6ff] hover:underline">
-          ← Back to tree
-        </Link>
-
-        <h1 className="mt-4 text-xl font-bold sm:text-2xl">
-          Suggest a correction
-        </h1>
-        <p className="mt-1 text-sm leading-relaxed text-gray-400">
-          Change anything that is wrong about {person.firstName} {person.lastName}.
-          Only what you change is sent, and an admin reviews it before the tree
-          is updated.
-        </p>
-
-        <CorrectionForm
+    <RegisterPage
+      hem="contribute"
+      eyebrow={`${person.firstName} ${person.lastName}`}
+      title="Suggest a correction"
+      intro="Change anything that is wrong. Only what you change is sent."
+      jina="An admin reviews every correction before the tree is updated."
+    >
+      <CorrectionForm
           person={{
             id: person.id,
             firstName: person.firstName,
@@ -77,7 +69,6 @@ export default async function CorrectPage({
             bio: person.bio ?? "",
           }}
         />
-      </div>
-    </main>
+    </RegisterPage>
   );
 }

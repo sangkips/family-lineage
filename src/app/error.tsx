@@ -26,32 +26,27 @@ export default function Error({
     );
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-[#0d1117] px-4 text-gray-100">
-      <div className="w-full max-w-sm rounded-2xl border border-gray-800 bg-[#161b22] p-6 text-center">
-        <h1 className="text-lg font-bold">
+    <main className="flex min-h-dvh items-center justify-center bg-field px-4">
+      <div className="card w-full max-w-sm p-6 text-center">
+        <p className="eyebrow">The register</p>
+        <h1 className="title mt-1.5 text-[24px]">
           {offline ? "Could not reach the register" : "Something went wrong"}
         </h1>
-        <p className="mt-2 text-sm leading-relaxed text-gray-400">
+        <p className="mt-2 text-[15px] leading-relaxed text-ink-soft">
           {offline
             ? "The connection dropped on the way to the database. Nothing you did was lost — try again in a moment."
             : "That page failed to load. Trying again often clears it."}
         </p>
 
-        <button
-          onClick={reset}
-          className="mt-5 min-h-11 w-full rounded-lg bg-[#58a6ff] px-4 text-sm font-semibold text-[#0d1117]"
-        >
+        <button onClick={reset} className="btn mt-5">
           Try again
         </button>
-        <Link
-          href="/"
-          className="mt-2 flex min-h-11 w-full items-center justify-center rounded-lg border border-gray-700 px-4 text-sm text-gray-300"
-        >
+        <Link href="/" className="btn btn-quiet mt-2">
           Back to the tree
         </Link>
 
         {error.digest && (
-          <p className="mt-4 text-[11px] text-gray-600">Reference {error.digest}</p>
+          <p className="tnum mt-4 text-[11px] text-ink-soft">Reference {error.digest}</p>
         )}
       </div>
     </main>

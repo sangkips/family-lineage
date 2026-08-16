@@ -29,9 +29,9 @@ type Props = {
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between gap-3 py-1.5 text-sm">
-      <span className="text-gray-500">{label}</span>
-      <span className="text-right text-gray-200">{value}</span>
+    <div className="flex justify-between gap-3 border-b border-seam py-2 text-[15px] last:border-0">
+      <span className="text-ink-soft">{label}</span>
+      <span className="tnum text-right text-ink">{value}</span>
     </div>
   );
 }
@@ -39,13 +39,11 @@ function Row({ label, value }: { label: string; value: string }) {
 function RelativeList({ label, people }: { label: string; people: PersonDTO[] }) {
   if (people.length === 0) return null;
   return (
-    <div className="mt-4">
-      <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-gray-500">
-        {label}
-      </h3>
+    <div className="mt-5">
+      <h3 className="eyebrow mb-1.5">{label}</h3>
       <ul className="space-y-1">
         {people.map((p) => (
-          <li key={p.id} className="text-sm text-gray-200">
+          <li key={p.id} className="text-[15px] text-ink">
             {p.firstName} {p.lastName}
           </li>
         ))}
@@ -71,43 +69,53 @@ export default function PersonDrawer({
 
   return (
     <aside
-      className="absolute inset-x-0 bottom-0 z-30 flex max-h-[70dvh] flex-col rounded-t-2xl border-t border-gray-800 bg-[#0d1117]/95 backdrop-blur sm:inset-x-auto sm:bottom-auto sm:right-0 sm:top-0 sm:z-10 sm:h-full sm:max-h-none sm:w-80 sm:rounded-none sm:border-l sm:border-t-0"
+      className="floating absolute inset-x-0 bottom-0 z-30 flex max-h-[70dvh] flex-col rounded-t-2xl border-x-0 border-b-0 sm:inset-x-auto sm:bottom-auto sm:right-0 sm:top-0 sm:z-10 sm:h-full sm:max-h-none sm:w-80 sm:rounded-none sm:border-y-0 sm:border-l"
       role="dialog"
       aria-label={`${person.firstName} ${person.lastName} details`}
     >
       {/* Grab handle — signals "this sheet dismisses" on touch. */}
-      <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-gray-700 sm:hidden" />
+      <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-seam sm:hidden" />
 
-      <div className="flex items-start justify-between gap-3 border-b border-gray-800 p-4">
+      <div className="flex items-start justify-between gap-3 border-b border-seam p-4">
         <div className="min-w-0">
-          <h2 className="text-lg font-semibold text-gray-100">
+          <h2 className="font-display text-[19px] font-bold leading-tight text-ink">
             {person.firstName} {person.lastName}
-            {person.maidenName && (
-              <span className="ml-1 text-sm font-normal text-gray-400">
-                (née {person.maidenName})
-              </span>
-            )}
           </h2>
-          <p className="text-xs text-gray-500">
+          {person.maidenName && (
+            <p className="text-[13px] text-ink-soft">née {person.maidenName}</p>
+          )}
+          <p className="mt-0.5 text-xs text-ink-soft">
             {relation && relation !== "you" && (
-              <span className="text-[#79c0ff]">your {relation} · </span>
+              <span className="font-semibold text-hibiscus">your {relation} · </span>
             )}
-            {relation === "you" && <span className="text-[#79c0ff]">this is you · </span>}
+            {relation === "you" && (
+              <span className="font-semibold text-hibiscus">this is you · </span>
+            )}
             {person.isLiving ? "Living" : "Deceased"}
           </p>
         </div>
         <button
           onClick={onClose}
-          className="-mr-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-gray-400 transition-colors active:bg-gray-800 sm:h-9 sm:w-9 sm:hover:bg-gray-800 sm:hover:text-gray-200"
+          className="-mr-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-ink-soft transition-colors active:bg-field sm:h-9 sm:w-9 sm:hover:bg-field sm:hover:text-ink"
           aria-label="Close details"
         >
-          ✕
+          <svg
+            aria-hidden
+            className="h-4 w-4"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          >
+            <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" />
+          </svg>
         </button>
       </div>
 
       {person.status === "PENDING" && (
-        <div className="border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-300">
-          ⏳ Awaiting review — visible to admins only until it is approved.
+        <div className="border-b border-ochre bg-ochre-wash px-4 py-2 text-xs text-ochre-ink">
+          Awaiting review — visible to admins only until it is approved.
         </div>
       )}
 
@@ -119,26 +127,19 @@ export default function PersonDrawer({
         {person.birthPlace && <Row label="Birthplace" value={person.birthPlace} />}
         {!person.isLiving && <Row label="Death" value={formatFullDate(person.deathDate)} />}
         {person.bio && (
-          <p className="mt-3 border-t border-gray-800 pt-3 text-sm leading-relaxed text-gray-300">
-            {person.bio}
-          </p>
+          <p className="mt-3 text-[15px] leading-relaxed text-ink">{person.bio}</p>
         )}
         {marriages.length > 0 && (
-          <div className="mt-4">
-            <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-gray-500">
-              Married to
-            </h3>
+          <div className="mt-5">
+            <h3 className="eyebrow mb-1.5">Married to</h3>
             <ul className="space-y-1.5">
               {marriages.map((marriage) => (
                 <li key={marriage.id}>
-                  <Link
-                    href={`/family/${marriage.id}`}
-                    className="flex min-h-11 items-center justify-between gap-2 rounded-lg border border-gray-800 bg-[#161b22] px-3 text-sm"
-                  >
-                    <span className="truncate text-gray-100">
+                  <Link href={`/family/${marriage.id}`} className="list-row text-[15px]">
+                    <span className="truncate text-ink">
                       {marriage.spouse.firstName} {marriage.spouse.lastName}
                     </span>
-                    <span className="shrink-0 text-xs text-gray-500">
+                    <span className="tnum shrink-0 text-xs text-ink-soft">
                       {marriage.startYear ?? ""}
                       {marriage.endYear ? `–${marriage.endYear}` : ""} ›
                     </span>
@@ -157,26 +158,23 @@ export default function PersonDrawer({
       {/* No sign-in gate: anyone in the family can contribute, and an admin
           approves it before it reaches the public tree. */}
       <div
-        className="shrink-0 space-y-2 border-t border-gray-800 p-4"
+        className="shrink-0 space-y-2 border-t border-seam bg-field p-4"
         style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
       >
-        <button
-          onClick={() => router.push(`/add?parentId=${person.id}`)}
-          className="min-h-11 w-full rounded-lg bg-[#58a6ff] px-3 py-2 text-sm font-semibold text-[#0d1117] transition-opacity hover:opacity-90"
-        >
-          ＋ Add child under {person.firstName}
+        <button onClick={() => router.push(`/add?parentId=${person.id}`)} className="btn">
+          Add a child under {person.firstName}
         </button>
         <button
           onClick={() => router.push(`/marry/${person.id}`)}
-          className="min-h-11 w-full rounded-lg border border-gray-700 bg-[#161b22] px-3 py-2 text-sm font-semibold text-gray-300 transition-colors hover:border-gray-600 hover:text-gray-100"
+          className="btn btn-quiet"
         >
-          {marriages.length > 0 ? "⚭ Edit marriage" : "⚭ Record a marriage"}
+          {marriages.length > 0 ? "Edit marriage" : "Record a marriage"}
         </button>
         <button
           onClick={() => router.push(`/correct/${person.id}`)}
-          className="min-h-11 w-full rounded-lg border border-gray-700 bg-[#161b22] px-3 py-2 text-sm font-semibold text-gray-300 transition-colors hover:border-gray-600 hover:text-gray-100"
+          className="btn btn-quiet"
         >
-          ✎ Suggest a correction
+          Suggest a correction
         </button>
       </div>
     </aside>

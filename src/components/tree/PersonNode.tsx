@@ -37,25 +37,30 @@ function PersonNode({ data, selected }: NodeProps<PersonFlowNode>) {
   const isAnchor = relation === "you";
   const initials = `${person.firstName[0] ?? ""}${person.lastName[0] ?? ""}`.toUpperCase();
 
-  const avatarStyles =
-    person.gender === "FEMALE"
-      ? "bg-pink-500/20 text-pink-300 border-pink-500/50"
+  // Two colours do the whole cloth, so gender is cobalt, hibiscus, or ink —
+  // never a third decorative hue.
+  const avatarStyles = isAnchor
+    ? "border-white/40 bg-white/15 text-white"
+    : person.gender === "FEMALE"
+      ? "border-hibiscus/40 bg-hibiscus-wash text-hibiscus"
       : person.gender === "MALE"
-        ? "bg-blue-500/20 text-blue-300 border-blue-500/50"
-        : "bg-purple-500/20 text-purple-300 border-purple-500/50";
+        ? "border-cobalt/30 bg-cobalt-wash text-cobalt"
+        : "border-seam bg-field text-ink-soft";
 
   return (
     <div
-      style={{ width: nodeWidth, borderTop: `3px solid ${isPending ? "#f59e0b" : generationColor}` }}
-      className={`relative rounded-xl border bg-[#161b22] shadow-lg transition-shadow ${
-        selected
-          ? "border-[#58a6ff] ring-2 ring-[#58a6ff]/40"
-          : isAnchor
-            ? "border-[#58a6ff]/70 ring-1 ring-[#58a6ff]/30"
-            : isPending
-              ? "border-dashed border-amber-500/60"
-              : "border-gray-700/80"
-      } ${isPending ? "opacity-80" : ""}`}
+      style={{
+        width: nodeWidth,
+        borderTop: `3px solid ${isPending ? "var(--color-ochre)" : generationColor}`,
+      }}
+      // The anchor is the one filled card on the cloth: everyone else is paper.
+      className={`relative rounded-[14px] border transition-shadow ${
+        isAnchor
+          ? "border-hibiscus bg-cobalt shadow-[0_10px_24px_-14px_rgb(16_26_46/0.6)]"
+          : isPending
+            ? "border-dashed border-ochre bg-ochre-wash"
+            : "border-seam bg-card"
+      } ${selected ? "ring-2 ring-cobalt" : ""}`}
     >
       {hasChildren && onToggleCollapse && (
         <button
@@ -76,17 +81,17 @@ function PersonNode({ data, selected }: NodeProps<PersonFlowNode>) {
           }
           // The visible pill stays small; ::after widens the hit area to a
           // thumb-sized target without disturbing the layout.
-          className={`absolute -right-2.5 -top-2.5 z-10 flex h-6 min-w-6 items-center justify-center rounded-full border px-1 text-xs font-semibold shadow-md transition-colors after:absolute after:-inset-2.5 after:content-[''] ${
+          className={`tnum absolute -right-2.5 -top-2.5 z-10 flex h-6 min-w-6 items-center justify-center rounded-full border px-1 text-xs font-semibold shadow-sm transition-colors after:absolute after:-inset-2.5 after:content-[''] ${
             collapsed
-              ? "border-[#58a6ff] bg-[#58a6ff] text-[#0d1117] hover:bg-[#79c0ff]"
-              : "border-gray-600 bg-[#0d1117] text-gray-300 hover:border-[#58a6ff] hover:text-[#58a6ff]"
+              ? "border-cobalt bg-cobalt text-white hover:bg-cobalt-deep"
+              : "border-seam bg-card text-ink-soft hover:border-cobalt hover:text-cobalt"
           }`}
         >
           {collapsed ? `+${hiddenCount}` : "−"}
         </button>
       )}
 
-      <Handle type="target" position={Position.Top} className="!bg-gray-500 !w-2 !h-2" />
+      <Handle type="target" position={Position.Top} className="!h-2 !w-2 !border-0 !bg-[#b9c2cc]" />
       {/* Side handles carry the spouse connector between partners. */}
       <Handle
         id="spouse-left"
@@ -103,20 +108,28 @@ function PersonNode({ data, selected }: NodeProps<PersonFlowNode>) {
 
       <div className="flex items-center gap-2 px-2.5 py-2 sm:gap-2.5 sm:px-3 sm:py-2.5">
         <div
-          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-semibold sm:h-9 sm:w-9 ${avatarStyles}`}
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border font-display text-xs font-bold sm:h-9 sm:w-9 ${avatarStyles}`}
         >
           {initials}
         </div>
         <div className="min-w-0">
           {/* Wraps rather than truncates — a card that says "Sarah Ander…"
               is not much use for finding your own family. */}
-          <p className="line-clamp-2 text-[13px] font-semibold leading-tight text-gray-100 sm:text-sm">
+          <p
+            className={`line-clamp-2 font-display text-[13px] font-bold leading-tight sm:text-sm ${
+              isAnchor ? "text-white" : "text-ink"
+            }`}
+          >
             {person.firstName} {person.lastName}
           </p>
-          <p className="truncate text-[11px] text-gray-400 sm:text-xs">
+          <p
+            className={`tnum truncate text-[11px] sm:text-xs ${
+              isAnchor ? "text-white/70" : "text-ink-soft"
+            }`}
+          >
             {isPending ? (
-              <span className="flex items-center gap-1 text-amber-400">
-                <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amber-400" />
+              <span className="flex items-center gap-1 text-ochre-ink">
+                <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-ochre" />
                 Pending approval
               </span>
             ) : (
@@ -126,19 +139,20 @@ function PersonNode({ data, selected }: NodeProps<PersonFlowNode>) {
         </div>
       </div>
 
+      {/* The card's own hem: how this person stands to you. */}
       {relation && (
         <p
-          className={`truncate rounded-b-[9px] border-t px-2.5 py-1 text-[11px] ${
+          className={`truncate rounded-b-[12px] border-t px-2.5 py-1 font-display text-[10px] font-semibold uppercase tracking-[0.07em] ${
             isAnchor
-              ? "border-[#58a6ff]/30 bg-[#58a6ff]/10 font-semibold text-[#79c0ff]"
-              : "border-gray-800 bg-[#0d1117]/60 text-gray-400"
+              ? "border-hibiscus/60 bg-hibiscus text-white"
+              : "border-seam bg-field text-ink-soft"
           }`}
         >
           {relation}
         </p>
       )}
 
-      <Handle type="source" position={Position.Bottom} className="!bg-gray-500 !w-2 !h-2" />
+      <Handle type="source" position={Position.Bottom} className="!h-2 !w-2 !border-0 !bg-[#b9c2cc]" />
     </div>
   );
 }

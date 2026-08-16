@@ -15,7 +15,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useIsCompact } from "@/components/useIsCompact";
-import { createRelationLookup, describeGenerationOffset } from "@/lib/kinship";
+import { createRelationLookup } from "@/lib/kinship";
 import { COMPACT_METRICS, DEFAULT_METRICS, layoutTree } from "@/lib/layout";
 import type { TreeData } from "@/lib/tree";
 import AnchorPicker from "./AnchorPicker";
@@ -44,15 +44,20 @@ function reachableFrom(
   return found;
 }
 
+/**
+ * One ordered ramp rather than eight unrelated hues: depth in a family tree
+ * is ordinal, so the colour can carry it. Deep cobalt at the oldest
+ * generation, warming to hibiscus at the youngest.
+ */
 export const GENERATION_COLORS = [
-  "#f97316", // gen 0 — orange
-  "#a855f7", // gen 1 — purple
-  "#3b82f6", // gen 2 — blue
-  "#22c55e", // gen 3 — green
-  "#ef4444", // gen 4 — red
-  "#06b6d4", // gen 5 — cyan
-  "#eab308", // gen 6 — yellow
-  "#ec4899", // gen 7 — pink
+  "#0e2e63", // gen 0 — deepest cobalt, the oldest recorded generation
+  "#1b4c8c",
+  "#1f7391",
+  "#268a6e",
+  "#7fa23f",
+  "#d2a020",
+  "#dc6a2e",
+  "#c42e60", // gen 7 — hibiscus, the youngest
 ];
 
 export default function TreeCanvas(props: { data: TreeData }) {
@@ -85,7 +90,6 @@ function TreeCanvasInner({ data }: { data: TreeData }) {
   /** Which anchor the opening collapsed view has already been built for. */
   const [seededAnchor, setSeededAnchor] = useState<string | null>(null);
   const [changingAnchor, setChangingAnchor] = useState(false);
-  const [legendOpen, setLegendOpen] = useState(false);
 
   const focusOn = useCallback((personId: string) => {
     setFocusRequest((prev) => ({ id: personId, seq: (prev?.seq ?? 0) + 1 }));
@@ -299,11 +303,6 @@ function TreeCanvasInner({ data }: { data: TreeData }) {
     [data.people]
   );
 
-  const anchorGeneration = useMemo(() => {
-    if (!anchorId) return null;
-    return layout.nodes.find((n) => n.id === anchorId)?.generation ?? null;
-  }, [anchorId, layout.nodes]);
-
   const nodes = useMemo<PersonFlowNode[]>(
     () =>
       layout.nodes.map((n) => ({
@@ -341,7 +340,7 @@ function TreeCanvasInner({ data }: { data: TreeData }) {
         source: e.source,
         target: e.target,
         type: "smoothstep",
-        style: { stroke: "#3f4b5e", strokeWidth: 1.5 },
+        style: { stroke: "#b9c2cc", strokeWidth: 1.5 },
         interactionWidth: 24,
       })),
       // Spouse connectors: solid where a marriage was recorded, faint and
@@ -354,8 +353,8 @@ function TreeCanvasInner({ data }: { data: TreeData }) {
         targetHandle: "spouse-left",
         type: "straight",
         style: couple.recorded
-          ? { stroke: "#e5a3c4", strokeWidth: 2 }
-          : { stroke: "#4b5563", strokeWidth: 1.5, strokeDasharray: "4 4" },
+          ? { stroke: "#c42e60", strokeWidth: 2 }
+          : { stroke: "#c8cfd7", strokeWidth: 1.5, strokeDasharray: "4 4" },
         interactionWidth: 20,
       })),
     ],
@@ -448,27 +447,29 @@ function TreeCanvasInner({ data }: { data: TreeData }) {
         nodesConnectable={false}
         onNodeClick={(_, node) => setSelectedId(node.id)}
         onPaneClick={() => setSelectedId(null)}
-        className="bg-[#0d1117]"
+        className="unroll bg-field"
       >
         <Background
           variant={BackgroundVariant.Dots}
           gap={24}
           size={1.5}
-          color="#21262d"
+          color="#c9d3e2"
         />
         <Controls
           position="bottom-left"
           showInteractive={false}
-          className="!bg-[#161b22] !border-gray-700 [&>button]:!h-11 [&>button]:!w-11 [&>button]:!bg-[#161b22] [&>button]:!text-gray-300 [&>button]:!border-gray-700 sm:[&>button]:!h-7 sm:[&>button]:!w-7"
+          className="!overflow-hidden !rounded-[10px] !border !border-seam !bg-card !shadow-[0_8px_20px_-14px_rgb(16_26_46/0.5)] [&>button]:!h-11 [&>button]:!w-11 [&>button]:!border-seam [&>button]:!bg-card [&>button]:!text-ink [&>button:hover]:!bg-cobalt-wash sm:[&>button]:!h-7 sm:[&>button]:!w-7"
         >
           {hasCollapsed && (
             <ControlButton
               onClick={expandAll}
               title="Expand all branches"
               aria-label="Expand all branches"
-              className="text-sm font-bold"
             >
-              ⤢
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6">
+                <path d="M9.5 6.5 14 2m0 0h-3.5M14 2v3.5" strokeLinecap="round" />
+                <path d="M6.5 9.5 2 14m0 0h3.5M2 14v-3.5" strokeLinecap="round" />
+              </svg>
             </ControlButton>
           )}
         </Controls>
@@ -478,34 +479,35 @@ function TreeCanvasInner({ data }: { data: TreeData }) {
             position="bottom-right"
             pannable
             zoomable
-            className="!bg-[#161b22] !border-gray-700"
+            className="!rounded-[10px] !border !border-seam !bg-card"
+            maskColor="rgb(243 245 241 / 0.75)"
             nodeColor={(node) =>
-              (node.data as { generationColor?: string }).generationColor ?? "#3f4b5e"
+              (node.data as { generationColor?: string }).generationColor ?? "#b9c2cc"
             }
           />
         )}
       </ReactFlow>
 
-      {/* Anchor state + generation legend. On a phone these sit bottom-right,
-          clear of both the search bar and the zoom controls, so they never
-          cover the cards; on wider screens they return to the top left. */}
+      {/* Who the tree is drawn around. On a phone this sits bottom-right,
+          clear of both the search bar and the zoom controls, so it never
+          covers the cards; on wider screens it returns to the top left. */}
       <div className="pointer-events-none absolute bottom-3 right-3 z-10 flex flex-col items-end gap-2 sm:bottom-auto sm:left-4 sm:right-auto sm:top-20 sm:flex-row sm:items-start">
         {anchorPerson ? (
           <button
             type="button"
             onClick={() => setChangingAnchor(true)}
-            className="pointer-events-auto flex min-h-9 max-w-[70vw] items-center gap-1.5 rounded-full border border-[#58a6ff]/40 bg-[#0d1117]/90 px-3 py-1.5 text-xs text-[#79c0ff] backdrop-blur sm:max-w-none"
+            className="chip chip-anchor pointer-events-auto max-w-[70vw] sm:max-w-none"
           >
             <span className="truncate">
-              Viewing as {anchorPerson.firstName} {anchorPerson.lastName}
+              You are {anchorPerson.firstName} {anchorPerson.lastName}
             </span>
-            <span className="shrink-0 text-gray-500">change</span>
+            <span className="shrink-0 text-ink-soft">change</span>
           </button>
         ) : (
           <button
             type="button"
             onClick={() => setChangingAnchor(true)}
-            className="pointer-events-auto min-h-9 rounded-full border border-gray-700 bg-[#0d1117]/90 px-3 py-1.5 text-xs text-gray-300 backdrop-blur"
+            className="chip pointer-events-auto"
           >
             Find yourself
           </button>
@@ -519,42 +521,11 @@ function TreeCanvasInner({ data }: { data: TreeData }) {
               setFocusRequest(null);
               didInitialFit.current = false;
             }}
-            className="pointer-events-auto min-h-9 rounded-full border border-gray-700 bg-[#0d1117]/90 px-3 py-1.5 text-xs text-gray-300 backdrop-blur"
+            className="chip pointer-events-auto"
           >
             Show everyone
           </button>
         )}
-
-        <div className="pointer-events-auto rounded-xl border border-gray-800 bg-[#0d1117]/90 backdrop-blur">
-          <button
-            type="button"
-            onClick={() => setLegendOpen((open) => !open)}
-            aria-expanded={legendOpen}
-            className="flex min-h-9 items-center gap-1.5 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-gray-400"
-          >
-            Generations
-            <span className="text-gray-600">{legendOpen ? "−" : "+"}</span>
-          </button>
-          {legendOpen && (
-            <div className="space-y-1.5 border-t border-gray-800 px-3 py-2">
-              {Array.from({ length: layout.maxGeneration + 1 }, (_, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <span
-                    className="h-2.5 w-2.5 shrink-0 rounded-sm"
-                    style={{
-                      backgroundColor: GENERATION_COLORS[i % GENERATION_COLORS.length],
-                    }}
-                  />
-                  <span className="text-xs text-gray-300">
-                    {anchorGeneration === null
-                      ? `Generation ${i}`
-                      : describeGenerationOffset(i - anchorGeneration)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
 
       {selected && (

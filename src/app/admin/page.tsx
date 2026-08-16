@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
+import RegisterPage from "@/components/chrome/RegisterPage";
 import HangingPeople from "@/components/admin/HangingPeople";
 import SubmissionRow, {
   type AdminSubmission,
@@ -149,40 +149,40 @@ export default async function AdminPage() {
   }));
 
   return (
-    <main className="min-h-dvh bg-[#0d1117] px-4 py-8 text-gray-100 sm:px-6 sm:py-10">
-      <div className="mx-auto w-full max-w-3xl">
-        <Link href="/" className="text-sm text-[#58a6ff] hover:underline">
-          ← Back to tree
-        </Link>
-        <h1 className="mt-4 text-xl font-bold sm:text-2xl">Moderation queue</h1>
-        <p className="mt-1 text-sm text-gray-400">
-          Anyone can add to the register without an account. Nothing they send
-          appears on the tree until you approve it here.
-        </p>
+    <RegisterPage
+      wide
+      hem="moderate"
+      eyebrow="Admin"
+      title="Moderation queue"
+      intro="Anyone can add to the register without an account. Nothing they send appears on the tree until you approve it here."
+      jina="Approving publishes an entry to everyone. Rejecting keeps it on record but off the tree."
+    >
+      {cards.length === 0 ? (
+        <div className="card p-8 text-center">
+          <p className="section-heading">The queue is clear</p>
+          <p className="mt-1.5 text-[15px] text-ink-soft">
+            New people, corrections and marriages sent from the tree land here for
+            your review.
+          </p>
+        </div>
+      ) : (
+        <ul className="space-y-2">
+          {cards.map((submission) => (
+            <SubmissionRow key={submission.id} submission={submission} />
+          ))}
+        </ul>
+      )}
 
-        {cards.length === 0 ? (
-          <div className="mt-6 rounded-2xl border border-gray-800 bg-[#161b22] p-8 text-center text-sm text-gray-400">
-            🎉 Nothing waiting for review.
-          </div>
-        ) : (
-          <ul className="mt-6 space-y-2">
-            {cards.map((submission) => (
-              <SubmissionRow key={submission.id} submission={submission} />
-            ))}
-          </ul>
-        )}
-
-        <HangingPeople
-          people={hanging.map((person) => ({
-            ...person,
-            birthDate: person.birthDate?.toISOString() ?? null,
-            createdAt: person.createdAt.toISOString(),
-            hasNamesake: namesakeKeys.has(
-              `${person.firstName.toLowerCase()}|${person.lastName.toLowerCase()}`
-            ),
-          }))}
-        />
-      </div>
-    </main>
+      <HangingPeople
+        people={hanging.map((person) => ({
+          ...person,
+          birthDate: person.birthDate?.toISOString() ?? null,
+          createdAt: person.createdAt.toISOString(),
+          hasNamesake: namesakeKeys.has(
+            `${person.firstName.toLowerCase()}|${person.lastName.toLowerCase()}`
+          ),
+        }))}
+      />
+    </RegisterPage>
   );
 }

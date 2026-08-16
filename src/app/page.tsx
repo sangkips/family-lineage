@@ -16,7 +16,7 @@ export default async function Home() {
   const data = await getTree({ viewer });
 
   return (
-    <main className="flex h-dvh flex-col bg-[#0d1117] text-gray-100">
+    <main className="flex h-dvh flex-col bg-field text-ink">
       <Header peopleCount={data.people.length} linkCount={data.links.length} />
       <div className="min-h-0 flex-1">
         <TreeCanvas data={data} />

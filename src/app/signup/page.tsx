@@ -63,7 +63,7 @@ export default function SignUpPage() {
         <h1 className="title mt-1.5 text-[26px]">Create an admin account</h1>
         <p className="mt-2 text-[15px] leading-relaxed text-ink-soft">
           Accounts are for admins only. To add yourself or a relative, go back to
-          the tree and tap Add a person — no account needed.
+          the tree and tap Add a person.
         </p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
